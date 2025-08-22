@@ -1,0 +1,71 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  position: relative;
+
+  .sidebar {
+    grid-column: 1 / 2;
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    z-index: 1030; // acima do conteúdo
+  }
+
+  .main {
+    grid-column: 2 / 3;
+    min-width: 0; // evita overflow com grid
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    height: 56px;
+    background: #fff;
+  }
+
+  .sidebar-nav .nav-link {
+    border-radius: .25rem;
+    color: #344767;
+    text-decoration: none;
+  }
+  .sidebar-nav .nav-link.active,
+  .sidebar-nav .nav-link:hover {
+    background: rgba(13, 110, 253, .08);
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+  }
+
+  // Mobile: sidebar "off-canvas"
+  @media (max-width: 991.98px) {
+    grid-template-columns: 0 1fr;
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: -260px; // escondida
+      transition: left .2s ease-in-out;
+    }
+
+    &.sidebar-open {
+      .sidebar { left: 0; }
+      .backdrop {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .2s ease-in-out, visibility .2s;
+      z-index: 1020;
+    }
+  }
+}

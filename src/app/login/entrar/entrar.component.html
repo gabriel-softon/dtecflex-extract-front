@@ -1,0 +1,57 @@
+<form [formGroup]="loginForm" (ngSubmit)="submit()">
+
+  <!-- Campo de e-mail -->
+  <div class="form-group">
+    <label for="username">E-mail</label>
+    <input
+      type="text"
+      id="username"
+      formControlName="username"
+      class="form-control"
+      placeholder="Digite seu e-mail"
+      [class.is-invalid]="loginForm.get('username').touched && loginForm.get('username').invalid"
+    >
+    <div *ngIf="loginForm.get('username').touched && loginForm.get('username').invalid" class="invalid-feedback">
+      <div *ngIf="loginForm.get('username').errors?.required">
+        O e-mail é obrigatório.
+      </div>
+      <div *ngIf="loginForm.get('username').errors?.email">
+        Formato de e-mail inválido.
+      </div>
+    </div>
+  </div>
+
+  <!-- Campo de senha -->
+  <div class="form-group">
+    <label for="password">Senha</label>
+    <input
+      type="password"
+      id="password"
+      formControlName="password"
+      class="form-control"
+      placeholder="Digite sua senha"
+      [class.is-invalid]="loginForm.get('password').touched && loginForm.get('password').invalid"
+    >
+    <div *ngIf="loginForm.get('password').touched && loginForm.get('password').invalid" class="invalid-feedback">
+      <div *ngIf="loginForm.get('password').errors?.required">
+        A senha é obrigatória.
+      </div>
+    </div>
+  </div>
+
+  <!-- Botão de envio com spinner -->
+  <button
+    type="submit"
+    class="btn btn-primary"
+    [disabled]="spinner || loginForm.invalid"
+  >
+    Entrar
+    <span
+      *ngIf="spinner"
+      class="spinner-border spinner-border-sm ml-2"
+      role="status"
+      aria-hidden="true"
+    ></span>
+  </button>
+
+</form>

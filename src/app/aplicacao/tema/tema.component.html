@@ -1,0 +1,71 @@
+<div class="app-shell" [class.sidebar-open]="sidebarOpen">
+  <!-- SIDEBAR -->
+  <aside class="sidebar bg-light border-end">
+    <div class="sidebar-header px-3 py-3">
+      <small class="text-muted">Painel</small>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul class="list-unstyled mb-0">
+        <li>
+          <a
+            mdbRipple
+            class="nav-link d-flex align-items-center px-3 py-2"
+            routerLink="/inicio"
+            routerLinkActive="active"
+            (click)="closeSidebar()"
+          >
+            <span>Início</span>
+          </a>
+        </li>
+        <li>
+          <a
+            mdbRipple
+            class="nav-link d-flex align-items-center px-3 py-2"
+            routerLink="/aprovacao"
+            routerLinkActive="active"
+            (click)="closeSidebar()"
+          >
+            <span>Aprovação</span>
+          </a>
+        </li>
+
+        <li>
+          <a
+            mdbRipple
+            class="nav-link d-flex align-items-center px-3 py-2"
+            routerLink="/publicar"
+            routerLinkActive="active"
+            (click)="closeSidebar()"
+          >
+            <span>Publicar</span>
+          </a>
+        </li>
+
+        <!-- futuro:
+        <li><a mdbRipple class="nav-link px-3 py-2" routerLink="/indicacao" routerLinkActive="active" (click)="closeSidebar()">Indicação</a></li>
+        -->
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer px-3 py-3 text-muted small">
+      v1.0
+    </div>
+  </aside>
+
+  <!-- TOPO + CONTEÚDO -->
+  <div class="main">
+    <header class="topbar d-flex align-items-center justify-content-between border-bottom">
+      <button class="btn btn-outline-secondary d-lg-none ms-2" type="button" (click)="toggleSidebar()">
+        ☰
+      </button>
+    </header>
+
+    <main class="content p-3">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  <!-- backdrop para mobile -->
+  <div class="backdrop d-lg-none" (click)="closeSidebar()"></div>
+</div>

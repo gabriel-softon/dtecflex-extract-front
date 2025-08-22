@@ -1,0 +1,16 @@
+/* You can add global styles to this file, and also import other style files */
+@import "@fortawesome/fontawesome-free/css/all.css";
+
+@import 'mdb-angular-ui-kit/assets/scss/mdb.scss';
+
+ngx-toast-center {
+  position: fixed;      /* para ficar “presa” na viewport */
+  top: 1rem;            /* ajuste a distância do topo */
+  right: 1rem;          /* ajuste a distância da direita */
+  z-index: 2000 !important; /* bem acima do 1055 do modal */
+}
+
+ngx-toast-center .ngx-toast-wrapper,
+ngx-toast-center .ngx-toast {
+  z-index: 2000 !important;
+}

@@ -1,0 +1,738 @@
+<div class="container-fluid pt-5">
+  <!-- 1) FILTROS -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <label for="categoria">Categoria</label>
+      <select id="categoria" class="form-control custom-input" [(ngModel)]="selectedCategoria"
+        (change)="applyFilters()">
+        <option value="">Selecione uma categoria</option>
+        <option *ngFor="let categoria of categorias" [value]="categoria">
+          {{ categoria }}
+        </option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label for="dataInicio">Data</label>
+      <input type="text" placeholder="Selecione um período" class="form-control custom-input w-100" [minDate]="minDate"
+        bsDaterangepicker [(ngModel)]="dateRange" [bsConfig]="bsConfig" (bsValueChange)="onDateRangeChange($event)"
+        name="dateRange" />
+    </div>
+    <div class="col-md-4">
+      <label for="subcategorias">Subcategorias</label>
+      <input id="subcategorias" class="form-control custom-input" [(ngModel)]="newTag" (keyup.enter)="addTag()"
+        placeholder="Digite e aperte Enter" />
+      <div class="mt-2">
+        <span *ngFor="let tag of subcategorias" class="badge bg-info me-2">
+          {{ tag }}
+          <span (click)="removeTag(tag)" class="ms-1 text-danger" style="cursor: pointer;">
+            &times;
+          </span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col d-flex justify-content-start">
+      <button class="btn btn-success" type="button" (click)="openAddModal()">
+        <i class="fas fa-plus me-1"></i> Adicionar notícia
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="d-flex justify-content-center my-5">
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <div *ngIf="!isLoading">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <button class="btn btn-light" (click)="toggleLayout()">
+        <i *ngIf="isGridLayout" class="fas fa-th-large"></i>
+        <i *ngIf="!isGridLayout" class="fas fa-list"></i>
+      </button>
+      <button class="btn" [ngClass]="{'btn-primary': showMyAnalyses, 'btn-outline-primary': !showMyAnalyses}"
+        (click)="toggleMyAnalyses()">
+        Minhas Análises
+      </button>
+    </div>
+
+    <div *ngIf="!showMyAnalyses">
+      <div class="row" [ngClass]="{'row-cols-1': !isGridLayout, 'row-cols-md-3': isGridLayout}">
+        <div class="col mb-4" *ngFor="let noticia of noticias">
+          <div class="card mb-4" [ngClass]="{
+                'clicked': noticia.STATUS === '07-EDIT-MODE',
+                'edit-mode': noticia.STATUS === '07-EDIT-MODE'
+              }">
+            <div class="card-body">
+              <div class="category d-flex justify-content-between">
+                <span class="badge bg-primary">{{ noticia.CATEGORIA }}</span>
+                <div *ngIf="statusMap[noticia.STATUS]" class="text-{{ statusMap[noticia.STATUS].color }} ms-2">
+                  {{ statusMap[noticia.STATUS].label }}
+                </div>
+              </div>
+              <hr class="divider">
+              <h6 class="card-title">{{ noticia.TITULO }}</h6>
+              <p class="card-text">
+                <strong>Fonte:</strong> {{ noticia.FONTE }}<br>
+                <strong>Data:</strong> {{ noticia.DT_RASPAGEM | date:'dd/MM/yyyy' }}
+              </p>
+              <div class="w-100 d-flex justify-content-between">
+                <div>
+                  <button *ngIf="noticia.STATUS !== '15-URL-CHK'" class="btn btn-primary btn-sm"
+                    (click)="openFullscreenModal(noticia)">
+                    Analisar
+                  </button>
+                  <button class="btn btn-danger btn-sm ms-2" (click)="deleteNoticia(noticia)"
+                    [disabled]="noticia.isDeleting">
+                    <span *ngIf="noticia.isDeleting" class="spinner-border spinner-border-sm me-1">
+                    </span>
+                    Excluir
+                  </button>
+                </div>
+                <input *ngIf="noticia.STATUS === '15-URL-CHK'" class="form-control" type="text" disabled
+                  placeholder="Em verificação">
+                <a *ngIf="noticia.LINK_ORIGINAL" [href]="noticia.LINK_ORIGINAL" target="_blank"
+                  class="btn btn-link btn-sm">
+                  Link
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav aria-label="Navegação de páginas" class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <button class="page-link" type="button"
+                    (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1">«</button>
+          </li>
+
+          <li *ngFor="let item of paginationItems"
+              class="page-item"
+              [class.active]="item === currentPage"
+              [class.disabled]="item === '...'">
+            <button *ngIf="item !== '...'" class="page-link" type="button"
+                    (click)="goToPage(item)">{{ item }}</button>
+            <span *ngIf="item === '...'" class="page-link">…</span>
+          </li>
+
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <button class="page-link" type="button"
+                    (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages">»</button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <div *ngIf="showMyAnalyses">
+      <mdb-tabs [justified]="true" (activeTabChange)="onTabChange($event)">
+        <mdb-tab *ngFor="let status of statusKeys; let i = index" title="{{ statusMap[status]?.label || status }}"
+          [active]="status === activeStatus">
+          <div class="row" [ngClass]="{'row-cols-1': !isGridLayout, 'row-cols-md-3': isGridLayout}">
+            <div class="col mb-4" *ngFor="let noticia of getCurrentPageItems(status)">
+              <div class="card mb-4" [ngClass]="{
+                'clicked': noticia.STATUS === '07-EDIT-MODE',
+                'edit-mode': noticia.STATUS === '07-EDIT-MODE'
+              }">
+                <div class="card-body">
+                  <div class="category d-flex justify-content-between">
+                    <span class="badge bg-primary">{{ noticia.CATEGORIA }}</span>
+                    <div *ngIf="statusMap[noticia.STATUS]" class="text-{{ statusMap[noticia.STATUS].color }} ms-2">
+                      {{ statusMap[noticia.STATUS].label }}
+                    </div>
+                  </div>
+                  <hr class="divider">
+                  <h6 class="card-title">{{ noticia.TITULO }}</h6>
+                  <p class="card-text">
+                    <strong>Fonte:</strong> {{ noticia.FONTE }}<br>
+                    <strong>Data:</strong> {{ noticia.DT_RASPAGEM | date:'dd/MM/yyyy' }}
+                  </p>
+                  <div class="w-100 d-flex justify-content-between">
+                    <div>
+                      <button *ngIf="noticia.STATUS !== '15-URL-CHK'" class="btn btn-primary btn-sm"
+                        (click)="openFullscreenModal(noticia)">
+                        Analisar
+                      </button>
+                      <button class="btn btn-danger btn-sm ms-2" (click)="deleteNoticia(noticia)"
+                        [disabled]="noticia.isDeleting">
+                        <span *ngIf="noticia.isDeleting" class="spinner-border spinner-border-sm me-1">
+                        </span>
+                        Excluir
+                      </button>
+                    </div>
+                    <input *ngIf="noticia.STATUS === '15-URL-CHK'" class="form-control" type="text" disabled
+                      placeholder="Em verificação">
+                    <a *ngIf="noticia.LINK_ORIGINAL" [href]="noticia.LINK_ORIGINAL" target="_blank"
+                      class="btn btn-link btn-sm">
+                      Link
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav aria-label="Paginação de {{ statusMap[status]?.label }}" class="mt-3">
+            <ul class="pagination justify-content-center">
+              <li class="page-item" *ngFor="let p of getPages(status)" [class.active]="p === pagesPerStatus[status]">
+                <a class="page-link" href="#" (click)="onPageChange(status, p); $event.preventDefault()">
+                  {{ p }}
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </mdb-tab>
+      </mdb-tabs>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isAddModalOpen" class="modal fade show d-block" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="addModalLabel">Adicionar notícia</h6>
+        <button type="button" class="btn-close" aria-label="Close" (click)="closeAddModal()" [disabled]="isCreating"></button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="createNoticia(true)">
+          <div class="row g-3">
+            <div class="col-md-12">
+              <label class="form-label">URL *</label>
+              <input class="form-control" [(ngModel)]="newNoticia.url" name="url" placeholder="https://..." required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fonte *</label>
+              <input class="form-control" [(ngModel)]="newNoticia.fonte" name="fonte" placeholder="Portal / Site" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Categoria *</label>
+              <select class="form-control" [(ngModel)]="newNoticia.categoria" name="categoria" required>
+                <option value="" disabled>Selecione</option>
+                <option *ngFor="let c of categorias" [value]="c">{{ c }}</option>
+              </select>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Titulo</label>
+              <input class="form-control" [(ngModel)]="newNoticia.titulo" name="titulo"/>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary"
+                (click)="createNoticia(true)"
+                [disabled]="isCreating || !newNoticia.url || !newNoticia.fonte || !newNoticia.categoria">
+          <span *ngIf="isCreating" class="spinner-border spinner-border-sm me-2"></span>
+          Ir para notícia
+        </button>
+        <button class="btn btn-outline-primary"
+                (click)="createNoticia(false)"
+                [disabled]="isCreating || !newNoticia.url || !newNoticia.fonte || !newNoticia.categoria">
+          <span *ngIf="isCreating" class="spinner-border spinner-border-sm me-2"></span>
+          Continuar cadastrando
+        </button>
+        <button class="btn btn-secondary" (click)="closeAddModal()" [disabled]="isCreating">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isAddModalOpen"
+     class="modal-backdrop fade show"
+     (click)="closeAddModal()">
+</div>
+
+<div *ngIf="isModalOpen" class="modal fade show d-block" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content">
+      <div class="modal-header d-flex justify-content-around align-items-center">
+        <div class="d-flex align-items-center">
+          <button type="button" class="btn btn-outline-secondary me-2" (click)="prevModalPage()"
+            [disabled]="modalPage === 1">
+            <i class="fas fa-arrow-left"></i>
+          </button>
+          <h6 class="modal-title mb-0">{{ selectedNoticia?.TITULO }}</h6>
+          <button type="button" class="btn btn-outline-secondary ms-2" (click)="nextModalPage()"
+            [disabled]="modalPage === 2">
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+        <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"
+          [disabled]="isSaving"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="modalPage === 1">
+          <form>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="fonte" class="form-label">Fonte</label>
+                <input id="fonte" name="fonte" type="text" class="form-control" [(ngModel)]="selectedNoticia.FONTE"
+                  placeholder="Informe a fonte" />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="titulo" class="form-label">Título</label>
+                <input id="titulo" name="titulo" type="text" class="form-control" [(ngModel)]="selectedNoticia.TITULO"
+                  placeholder="Informe o título" />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="categoria" class="form-label">Categoria</label>
+                <input id="categoria" name="categoria" type="text" class="form-control"
+                  [(ngModel)]="selectedNoticia.CATEGORIA" placeholder="Informe a categoria" />
+              </div>
+
+              <div class="col-md-4 mb-3">
+                <label for="regiao" class="form-label">Região</label>
+                <input id="regiao" name="regiao" type="text" class="form-control" [(ngModel)]="selectedNoticia.REGIAO"
+                  placeholder="Informe a região" />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="uf" class="form-label">UF</label>
+                <input id="uf" name="uf" type="text" class="form-control" [(ngModel)]="selectedNoticia.UF"
+                  placeholder="Informe a UF" />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="regNoticia" class="form-label">Reg Notícia</label>
+                <input id="regNoticia" name="regNoticia" type="text" class="form-control"
+                  [(ngModel)]="selectedNoticia.REG_NOTICIA" placeholder="Informe o registro" />
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="textoNoticia" class="form-label">Texto da Notícia</label>
+              <div *ngIf="isExtractingText" class="d-flex align-items-center mb-2">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Extraindo...</span>
+                </div>
+                <span class="ms-2">Extraindo notícia...</span>
+              </div>
+              <textarea *ngIf="!isExtractingText" id="textoNoticia" name="textoNoticia" rows="10"
+                class="form-control w-100" [(ngModel)]="selectedNoticia.TEXTO_NOTICIA"
+                placeholder="O texto aparecerá aqui após a extração"></textarea>
+            </div>
+          </form>
+        </div>
+
+        <div *ngIf="modalPage === 2" class="px-4 py-3">
+          <div class="mb-4">
+            <label class="form-label">Texto da Notícia</label>
+            <div class="news-text border rounded p-2" [innerHTML]="highlightedText"></div>
+
+            <div class="d-flex gap-2 mt-2 mb-3">
+              <button type="button" class="btn btn-primary btn-sm"
+                      (click)="extractNames()" [disabled]="isExtractingNames">
+                <span *ngIf="isExtractingNames" class="spinner-border spinner-border-sm me-1"></span>
+                {{ isExtractingNames ? 'Extraindo…' : 'Extrair Nomes' }}
+              </button>
+
+              <button type="button" class="btn btn-outline-success btn-sm"
+                      *ngIf="!newEntity" (click)="startAddEntity()">
+                Adicionar nome
+              </button>
+            </div>
+          </div>
+
+          <h5 class="mb-2">Nomes Salvos</h5>
+          <mdb-accordion *ngIf="savedEntities.length > 0">
+            <mdb-accordion-item *ngFor="let entity of savedEntities; let i = index" collapseId="saved{{ i }}">
+              <ng-template mdbAccordionItemHeader>
+                {{ entity.NOME }}
+              </ng-template>
+              <ng-template mdbAccordionItemBody>
+                <form class="row gx-3 gy-2">
+
+                  <!-- Linha 1 -->
+                  <div class="col-md-4">
+                    <label class="form-label">Nome</label>
+                    <input class="form-control" [(ngModel)]="entity.NOME" name="nomeS{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">CPF</label>
+                    <input class="form-control" [(ngModel)]="entity.CPF" name="cpfS{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Apelido</label>
+                    <input class="form-control" [(ngModel)]="entity.APELIDO" name="apelidoS{{i}}" />
+                  </div>
+
+                  <!-- Linha 2 -->
+                  <div class="col-md-4">
+                    <label class="form-label">Nome‑CPF</label>
+                    <input class="form-control" [(ngModel)]="entity.NOME_CPF" name="nomeCpfS{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Operação</label>
+                    <input class="form-control" [(ngModel)]="entity.OPERACAO" name="operacaoS{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Atividade</label>
+                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ATIVIDADE"
+                      name="atividadeS{{i}}"></textarea>
+                  </div>
+
+                  <!-- Linha 3 -->
+                  <div class="col-md-3">
+                    <label class="form-label">Sexo</label>
+                    <input class="form-control" [(ngModel)]="entity.SEXO" name="sexoS{{i}}" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Pessoa</label>
+                    <input class="form-control" [(ngModel)]="entity.PESSOA" name="pessoaS{{i}}" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Idade</label>
+                    <input type="number" class="form-control" [(ngModel)]="entity.IDADE" name="idadeS{{i}}" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Aniversário</label>
+                    <input type="date" class="form-control" [(ngModel)]="entity.ANIVERSARIO" name="aniversarioS{{i}}" />
+                  </div>
+
+                  <!-- Linha 4 -->
+                  <div class="col-md-6">
+                    <label class="form-label">Envolvimento</label>
+                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ENVOLVIMENTO"
+                      name="envolvimentoS{{i}}"></textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [(ngModel)]="entity.FLG_PESSOA_PUBLICA"
+                        name="flagPublicaS{{i}}" id="flagPublicaS{{i}}" />
+                      <label class="form-check-label" for="flagPublicaS{{i}}">Pessoa Pública</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [(ngModel)]="entity.INDICADOR_PPE"
+                        name="indicadorPpeS{{i}}" id="indicadorPpeS{{i}}" />
+                      <label class="form-check-label" for="indicadorPpeS{{i}}">Indicador PPE</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [(ngModel)]="entity.ENVOLVIMENTO_GOV"
+                        name="envolvimentoGovS{{i}}" id="envolvimentoGovS{{i}}" />
+                      <label class="form-check-label" for="envolvimentoGovS{{i}}">Envolvimento Gov</label>
+                    </div>
+                  </div>
+
+                  <!-- Botão Remover -->
+                  <div class="col-12 text-end mt-3">
+                    <button class="btn btn-sm btn-danger" (click)="deleteEntity(entity)" [disabled]="entity.isSaving">
+                      <span *ngIf="entity.isSaving" class="spinner-border spinner-border-sm me-1"></span>
+                      {{ entity.isSaving ? 'Removendo…' : 'Remover' }}
+                    </button>
+                  </div>
+                </form>
+              </ng-template>
+            </mdb-accordion-item>
+          </mdb-accordion>
+          <p *ngIf="!savedEntities.length" class="text-muted mb-4">
+            Nenhum nome salvo ainda.
+          </p>
+
+          <mdb-accordion *ngIf="newEntity">
+            <mdb-accordion-item collapseId="new">
+              <ng-template mdbAccordionItemHeader>
+                Novo nome
+              </ng-template>
+
+              <ng-template mdbAccordionItemBody>
+                <form class="row gx-3 gy-2">
+                  <!-- Linha 1 -->
+                  <div class="col-md-4">
+                    <label class="form-label">Nome</label>
+                    <div class="input-group">
+                      <input class="form-control" [(ngModel)]="newEntity.NOME" name="nomeN" />
+                      <button type="button" class="btn btn-outline-secondary"
+                              (click)="openDtecModalFor(newEntity, newEntity.NOME)" [disabled]="!newEntity.NOME">
+                        <i class="fas fa-search"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">CPF</label>
+                    <input class="form-control" [(ngModel)]="newEntity.CPF" name="cpfN" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Apelido</label>
+                    <input class="form-control" [(ngModel)]="newEntity.APELIDO" name="apelidoN" />
+                  </div>
+
+                  <!-- Linha 2 -->
+                  <div class="col-md-4">
+                    <label class="form-label">Nome-CPF</label>
+                    <input class="form-control" [(ngModel)]="newEntity.NOME_CPF" name="nomeCpfN" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Operação</label>
+                    <input class="form-control" [(ngModel)]="newEntity.OPERACAO" name="operacaoN" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Atividade</label>
+                    <textarea class="form-control" rows="2" [(ngModel)]="newEntity.ATIVIDADE" name="atividadeN"></textarea>
+                  </div>
+
+                  <!-- Linha 3 -->
+                  <div class="col-md-3">
+                    <label class="form-label">Sexo</label>
+                    <input class="form-control" [(ngModel)]="newEntity.SEXO" name="sexoN" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Pessoa</label>
+                    <input class="form-control" [(ngModel)]="newEntity.PESSOA" name="pessoaN" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Idade</label>
+                    <input type="number" class="form-control" [(ngModel)]="newEntity.IDADE" name="idadeN" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Aniversário</label>
+                    <input type="date" class="form-control" [(ngModel)]="newEntity.ANIVERSARIO" name="aniversarioN" />
+                  </div>
+
+                  <!-- Linha 4 -->
+                  <div class="col-md-6">
+                    <label class="form-label">Envolvimento</label>
+                    <textarea class="form-control" rows="2" [(ngModel)]="newEntity.ENVOLVIMENTO" name="envolvimentoN"></textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox"
+                            [(ngModel)]="newEntity.FLG_PESSOA_PUBLICA" name="flagPublicaN" id="flagPublicaN" />
+                      <label class="form-check-label" for="flagPublicaN">Pessoa Pública</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox"
+                            [(ngModel)]="newEntity.INDICADOR_PPE" name="indicadorPpeN" id="indicadorPpeN" />
+                      <label class="form-check-label" for="indicadorPpeN">Indicador PPE</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox"
+                            [(ngModel)]="newEntity.ENVOLVIMENTO_GOV" name="envolvimentoGovN" id="envolvimentoGovN" />
+                      <label class="form-check-label" for="envolvimentoGovN">Envolvimento Gov</label>
+                    </div>
+                  </div>
+
+                  <!-- Ações -->
+                  <div class="col-12 text-end mt-3">
+                    <button class="btn btn-sm btn-secondary me-2" type="button"
+                            (click)="cancelNewEntity()" [disabled]="newEntity.isSaving">
+                      Cancelar
+                    </button>
+                    <button class="btn btn-sm btn-success" type="button"
+                            (click)="saveNewEntity()" [disabled]="newEntity.isSaving || !newEntity.NOME">
+                      <span *ngIf="newEntity.isSaving" class="spinner-border spinner-border-sm me-1"></span>
+                      {{ newEntity.isSaving ? 'Salvando…' : 'Salvar' }}
+                    </button>
+                  </div>
+                </form>
+              </ng-template>
+            </mdb-accordion-item>
+          </mdb-accordion>
+
+          <hr>
+
+          <h5 class="mb-2">Nomes Extraídos</h5>
+          <!-- <button type="button" class="btn btn-primary btn-sm mb-3" (click)="extractNames()"
+            [disabled]="isExtractingNames">
+            <span *ngIf="isExtractingNames" class="spinner-border spinner-border-sm me-1"></span>
+            {{ isExtractingNames ? 'Extraindo…' : 'Extrair Nomes' }}
+          </button> -->
+          <mdb-accordion *ngIf="extractedEntities.length > 0">
+            <mdb-accordion-item *ngFor="let entity of extractedEntities; let i = index" collapseId="extr{{ i }}">
+              <ng-template mdbAccordionItemHeader>
+                {{ entity.NOME }}
+              </ng-template>
+              <ng-template mdbAccordionItemBody>
+                <form class="row gx-3 gy-2">
+
+                  <!-- Linha 1 -->
+                  <div class="col-md-4">
+                    <label class="form-label">Nome</label>
+                    <div class="input-group">
+                      <input class="form-control" [(ngModel)]="entity.NOME" name="nomeE{{i}}" />
+                      <button type="button" class="btn btn-outline-secondary"
+                              (click)="openDtecModalFor(entity, entity.NOME)" [disabled]="!entity.NOME">
+                        <i class="fas fa-search"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">CPF</label>
+                    <input class="form-control" [(ngModel)]="entity.CPF" name="cpfE{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Apelido</label>
+                    <input class="form-control" [(ngModel)]="entity.APELIDO" name="apelidoE{{i}}" />
+                  </div>
+
+                  <div class="col-md-4">
+                    <label class="form-label">Nome‑CPF</label>
+                    <input class="form-control" [(ngModel)]="entity.NOME_CPF" name="nomeCpfE{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Operação</label>
+                    <input class="form-control" [(ngModel)]="entity.OPERACAO" name="operacaoE{{i}}" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Atividade</label>
+                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ATIVIDADE"
+                      name="atividadeE{{i}}"></textarea>
+                  </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Sexo</label>
+                    <input class="form-control" [(ngModel)]="entity.SEXO" name="sexoE{{i}}" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Pessoa</label>
+                    <input class="form-control" [(ngModel)]="entity.PESSOA" name="pessoaE{{i}}" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Idade</label>
+                    <input type="number" class="form-control" [(ngModel)]="entity.IDADE" name="idadeE{{i}}" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Aniversário</label>
+                    <input type="date" class="form-control" [(ngModel)]="entity.ANIVERSARIO" name="aniversarioE{{i}}" />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Envolvimento</label>
+                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ENVOLVIMENTO"
+                      name="envolvimentoE{{i}}"></textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [(ngModel)]="entity.FLG_PESSOA_PUBLICA"
+                        name="flagPublicaE{{i}}" id="flagPublicaE{{i}}" />
+                      <label class="form-check-label" for="flagPublicaE{{i}}">Pessoa Pública</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [(ngModel)]="entity.INDICADOR_PPE"
+                        name="indicadorPpeE{{i}}" id="indicadorPpeE{{i}}" />
+                      <label class="form-check-label" for="indicadorPpeE{{i}}">Indicador PPE</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" [(ngModel)]="entity.ENVOLVIMENTO_GOV"
+                        name="envolvimentoGovE{{i}}" id="envolvimentoGovE{{i}}" />
+                      <label class="form-check-label" for="envolvimentoGovE{{i}}">Envolvimento Gov</label>
+                    </div>
+                  </div>
+
+                  <div class="col-12 text-end mt-3">
+                    <button class="btn btn-sm btn-success" (click)="saveEntity(entity)" [disabled]="entity.isSaving">
+                      <span *ngIf="entity.isSaving" class="spinner-border spinner-border-sm me-1"></span>
+                      {{ entity.isSaving ? 'Salvando…' : 'Salvar' }}
+                    </button>
+                  </div>
+                </form>
+              </ng-template>
+            </mdb-accordion-item>
+          </mdb-accordion>
+          <p *ngIf="!extractedEntities.length && !isExtractingNames" class="text-muted">
+            Clique em “Extrair Nomes” para buscar novos nomes.
+          </p>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" [disabled]="isSaving" (click)="saveNoticia()"
+          *ngIf="modalPage === 1">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          Salvar
+        </button>
+
+        <button type="button"
+                class="btn btn-primary"
+                *ngIf="modalPage === 2"
+                [disabled]="isSaving"
+                (click)="confirmAnalyse(selectedNoticia)">
+          Confirmar
+        </button>
+        <button type="button" class="btn btn-secondary" [disabled]="isSaving" (click)="closeModal()">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isDtecModalOpen" class="modal fade show d-block" tabindex="-1" aria-labelledby="dtecLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="dtecLabel">Buscar no DTEC</h6>
+        <button type="button" class="btn-close" aria-label="Close"
+                (click)="closeDtecModal()" [disabled]="isSearchingDtec"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" [(ngModel)]="dtecSearchQuery" placeholder="Digite o nome" />
+          <button class="btn btn-primary" type="button"
+                  (click)="searchDtec()" [disabled]="isSearchingDtec || !dtecSearchQuery?.trim()">
+            <span *ngIf="isSearchingDtec" class="spinner-border spinner-border-sm me-1"></span>
+            Buscar
+          </button>
+        </div>
+
+        <div *ngIf="isSearchingDtec" class="d-flex justify-content-center my-4">
+          <div class="spinner-border" role="status"><span class="visually-hidden">Buscando...</span></div>
+        </div>
+
+        <div *ngIf="!isSearchingDtec && dtecResults.length === 0" class="text-muted">
+          Nenhum resultado.
+        </div>
+
+        <div class="table-responsive" *ngIf="!isSearchingDtec && dtecResults.length > 0">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Sexo</th>
+                <th>Pessoa</th>
+                <th>PPE</th>
+                <th>Env. Gov</th>
+                <th>Fonte</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of dtecResults">
+                <td>{{ r.nome || r.nome_exato }}</td>
+                <td>{{ r.cpf }}</td>
+                <td>{{ r.sexo }}</td>
+                <td>{{ r.pessoa }}</td>
+                <td>{{ r.ppe }}</td>
+                <td>{{ r.envolvimento_gov }}</td>
+                <td>{{ r.fonte }}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-success" type="button" (click)="applyDtecResultToTarget(r)">
+                    Selecionar
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="text-muted small">* PPE e Env. Gov retornam “S”/“N”.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeDtecModal()" [disabled]="isSearchingDtec">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isDtecModalOpen"
+     class="modal-backdrop fade show"
+     (click)="closeDtecModal()">
+</div>
+
+<!-- <div *ngIf="isDtecModalOpen" class="modal-backdrop fade show" (click)="closeDtecModal()"></div> -->
+
+<!-- Modal HTML -->

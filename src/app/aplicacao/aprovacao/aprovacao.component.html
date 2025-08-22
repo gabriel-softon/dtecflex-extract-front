@@ -1,0 +1,332 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-end mb-3" *ngIf="!isLoading">
+    <button
+      type="button"
+      class="btn btn-success"
+      (click)="aprovarSelecionadas()"
+      [disabled]="!canApproveSelected"
+    >
+      Aprovar selecionadas
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" class="d-flex justify-content-center my-5" aria-live="polite">
+    <div class="spinner-border" role="status"></div>
+  </div>
+
+  <div *ngIf="!isLoading">
+    <div class="row fw-bold border-bottom pb-2 mb-2">
+      <div class="col">Título</div>
+      <div class="col">Categoria</div>
+      <div class="col">Data</div>
+      <div class="col text-center">REG_NOTICIA</div>
+    </div>
+
+    <mdb-accordion class="w-100">
+      <mdb-accordion-item
+        *ngFor="let n of noticias; let i = index; trackBy: trackByNoticiaId"
+        [collapseId]="'news' + (n?.ID ?? i)"
+      >
+        <ng-template mdbAccordionItemHeader>
+          <div class="row w-100 py-2 align-items-center">
+            <div class="col-auto text-center" style="width: 2.5rem;">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                [checked]="isSelecionada(n)"
+                (change)="toggleSelecionada(n, $event.target.checked)"
+                [attr.aria-label]="'Selecionar notícia ' + (n?.TITULO || '')"
+              />
+            </div>
+
+            <div class="col">{{ n.TITULO }}</div>
+            <div class="col">{{ n.CATEGORIA }}</div>
+            <div class="col">{{ n.DT_RASPAGEM | date:'dd/MM/yyyy' }}</div>
+            <div class="col text-center">{{ n.REG_NOTICIA || 'n/a' }}</div>
+
+            <div class="col-auto d-flex align-items-center gap-2">
+              <span *ngIf="n.STATUS === '07-EDIT-MODE'" class="badge bg-warning text-dark">Em edição</span>
+
+              <button
+                class="btn btn-sm btn-outline-primary"
+                type="button"
+                *ngIf="!isEditing(n)"
+                (click)="startEdit(n)"
+              >
+                Editar
+              </button>
+
+              <div *ngIf="isEditing(n)" class="btn btn-group btn-group-sm">
+                <button class="btn btn-success" type="button" (click)="saveEdit(n)">Salvar</button>
+                <button class="btn btn-outline-secondary" type="button" (click)="cancelEdit(n)">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </ng-template>
+
+        <ng-template mdbAccordionItemBody>
+          <div class="mb-3">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Fonte</label>
+                <input class="form-control" [(ngModel)]="n.FONTE" [disabled]="!isEditing(n)" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Título</label>
+                <input class="form-control" [(ngModel)]="n.TITULO" [disabled]="!isEditing(n)" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Categoria</label>
+                <input class="form-control" [(ngModel)]="n.CATEGORIA" [disabled]="!isEditing(n)" />
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Região</label>
+                <input class="form-control" [(ngModel)]="n.REGIAO" [disabled]="!isEditing(n)" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">UF</label>
+                <input class="form-control" [(ngModel)]="n.UF" [disabled]="!isEditing(n)" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">REG_NOTICIA</label>
+                <input class="form-control" [(ngModel)]="n.REG_NOTICIA" [disabled]="!isEditing(n)" />
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">Texto da Notícia</label>
+                <textarea
+                  class="form-control"
+                  rows="6"
+                  [(ngModel)]="n.TEXTO_NOTICIA"
+                  [disabled]="!isEditing(n)"
+                ></textarea>
+              </div>
+
+              <!-- <div class="col-md-6">
+                <label class="form-label">Link Original</label>
+                <input class="form-control" type="url" [(ngModel)]="n.LINK_ORIGINAL" [disabled]="!isEditing(n)" />
+              </div> -->
+              <!-- <div class="col-md-6">
+                <label class="form-label">URL</label>
+                <input class="form-control" type="url" [(ngModel)]="n.URL" [disabled]="!isEditing(n)" />
+              </div> -->
+            </div>
+          </div>
+
+          <div *ngIf="n.nomes_raspados?.length; else semNomes">
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle">
+                <thead>
+                  <tr
+                    cdkDropList
+                    cdkDropListOrientation="horizontal"
+                    (cdkDropListDropped)="dropColumn($event)"
+                  >
+                    <th class="text-center" style="width: 3rem;"></th>
+
+                    <th *ngFor="let col of displayedColumns; trackBy: trackByColKey" cdkDrag>
+                      <span cdkDragHandle style="cursor:grab; user-select:none;">☰</span>
+                      <span class="ms-1">{{ col.label }}</span>
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr *ngFor="let e of n.nomes_raspados; trackBy: trackByNomeId">
+                    <td class="text-center">
+                      <button
+                        type="button"
+                        class="btn btn-link p-0"
+                        (click)="openNomeModal(n, e)"
+                        [attr.aria-label]="'Ver detalhes de ' + (e?.NOME || '')"
+                        title="Detalhes"
+                      >
+                        <i class="fas fa-eye" aria-hidden="true"></i>
+                        <span class="visually-hidden">Detalhes</span>
+                      </button>
+                    </td>
+
+                    <td *ngFor="let col of displayedColumns; trackBy: trackByColKey">
+                      <ng-container [ngSwitch]="col.type">
+
+                        <div
+                          *ngSwitchCase="'text'"
+                          class="editable-cell"
+                          [class.bg-light]="!isEditing(n)"
+                          [attr.contenteditable]="isEditing(n) ? 'true' : null"
+                          [textContent]="e[col.key]"
+                          (blur)="isEditing(n) && onCellEdit(e, col.key, $event)"
+                        ></div>
+
+                        <div
+                          *ngSwitchCase="'number'"
+                          class="editable-cell"
+                          [class.bg-light]="!isEditing(n)"
+                          [attr.inputmode]="isEditing(n) ? 'numeric' : null"
+                          [attr.contenteditable]="isEditing(n) ? 'true' : null"
+                          [textContent]="e[col.key]"
+                          (blur)="isEditing(n) && onCellEdit(e, col.key, $event)"
+                        ></div>
+
+                        <select
+                          *ngSwitchCase="'select'"
+                          class="form-select form-select-sm"
+                          [disabled]="!isEditing(n)"
+                          [(ngModel)]="e[col.key]"
+                        >
+                          <option *ngFor="let opt of col.options" [ngValue]="getOptValue(opt)">
+                            {{ getOptLabel(opt) }}
+                          </option>
+                        </select>
+
+                        <div *ngSwitchCase="'boolean'" class="form-check d-flex align-items-center">
+                          <input
+                            type="checkbox"
+                            class="form-check-input me-2"
+                            [disabled]="!isEditing(n)"
+                            [checked]="e[col.key] == '1' || e[col.key] === true"
+                            (change)="onCheckboxChange(e, col.key, $event)"
+                          />
+                          <label class="form-check-label m-0">{{ col.label }}</label>
+                        </div>
+
+                        <div *ngSwitchDefault class="editable-cell" [textContent]="e[col.key]"></div>
+                      </ng-container>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <ng-template #semNomes>
+            <p class="text-muted">Nenhum nome salvo para esta notícia.</p>
+          </ng-template>
+        </ng-template>
+      </mdb-accordion-item>
+    </mdb-accordion>
+
+    <nav *ngIf="totalPages > 1" aria-label="Paginação">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" [class.disabled]="currentPage === 1">
+          <button
+            class="page-link"
+            (click)="loadNoticias(currentPage - 1)"
+            [disabled]="currentPage === 1"
+          >
+            «
+          </button>
+        </li>
+        <li
+          class="page-item"
+          *ngFor="let p of pages; trackBy: trackByPage"
+          [class.active]="p === currentPage"
+        >
+          <button class="page-link" (click)="loadNoticias(p)">{{ p }}</button>
+        </li>
+        <li class="page-item" [class.disabled]="currentPage === totalPages">
+          <button
+            class="page-link"
+            (click)="loadNoticias(currentPage + 1)"
+            [disabled]="currentPage === totalPages"
+          >
+            »
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<div *ngIf="isNomeModalOpen" class="modal fade show d-block" tabindex="-1" aria-labelledby="nomeLabel" aria-modal="true" role="dialog">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="nomeLabel">Detalhes do nome</h6>
+        <button type="button" class="btn-close" aria-label="Close" (click)="closeNomeModal(false)"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nome</label>
+            <input class="form-control" [(ngModel)]="nomeForm.NOME" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">CPF</label>
+            <input class="form-control" [(ngModel)]="nomeForm.CPF" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Apelido</label>
+            <input class="form-control" [(ngModel)]="nomeForm.APELIDO" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Sexo</label>
+            <select class="form-select" [(ngModel)]="nomeForm.SEXO" [disabled]="!isEditing(modalNoticiaTarget)">
+              <option [ngValue]="null">—</option>
+              <option [ngValue]="'M'">M</option>
+              <option [ngValue]="'F'">F</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Pessoa</label>
+            <select class="form-select" [(ngModel)]="nomeForm.PESSOA" [disabled]="!isEditing(modalNoticiaTarget)">
+              <option [ngValue]="null">—</option>
+              <option [ngValue]="'F'">Física</option>
+              <option [ngValue]="'J'">Jurídica</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Idade</label>
+            <input type="number" class="form-control" [(ngModel)]="nomeForm.IDADE" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Aniversário</label>
+            <input type="date" class="form-control" [(ngModel)]="nomeForm.ANIVERSARIO" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Atividade</label>
+            <input class="form-control" [(ngModel)]="nomeForm.ATIVIDADE" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Operação</label>
+            <input class="form-control" [(ngModel)]="nomeForm.OPERACAO" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Envolvimento</label>
+            <textarea class="form-control" rows="2" [(ngModel)]="nomeForm.ENVOLVIMENTO" [disabled]="!isEditing(modalNoticiaTarget)"></textarea>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Tipo Suspeita</label>
+            <input class="form-control" [(ngModel)]="nomeForm.TIPO_SUSPEITA" [disabled]="!isEditing(modalNoticiaTarget)" />
+          </div>
+          <div class="col-md-6 d-flex align-items-center gap-4">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="flgPub"
+                     [(ngModel)]="nomeForm.FLG_PESSOA_PUBLICA"
+                     [disabled]="!isEditing(modalNoticiaTarget)">
+              <label for="flgPub" class="form-check-label">Pessoa Pública</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="ppe"
+                     [(ngModel)]="nomeForm.INDICADOR_PPE"
+                     [disabled]="!isEditing(modalNoticiaTarget)">
+              <label for="ppe" class="form-check-label">PPE</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeNomeModal(false)">Fechar</button>
+        <button class="btn btn-primary" [disabled]="!isEditing(modalNoticiaTarget)" (click)="closeNomeModal(true)">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div *ngIf="isNomeModalOpen" class="modal-backdrop fade show" (click)="closeNomeModal(false)"></div>
