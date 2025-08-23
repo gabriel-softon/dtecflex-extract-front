@@ -6,13 +6,14 @@ import { Router } from '@angular/router';
 import { StorageService } from "../shared/service/storage.service";
 import { LocalStorageVariables } from "../shared/enums/local-storage-variables.enum";
 import moment from "moment";
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: "root",
 })
 export class AuthService {
   private readonly apiUrl = `usuario`;
-  private readonly apiLogin = `http://localhost:8000/auth` 
+  private readonly apiLogin = environment.API
 
 
 
