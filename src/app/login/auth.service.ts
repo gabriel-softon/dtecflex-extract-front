@@ -12,8 +12,9 @@ import { environment } from 'src/environments/environment';
   providedIn: "root",
 })
 export class AuthService {
-  private readonly apiUrl = `usuario`;
-  private readonly apiLogin = environment.API
+  private readonly apiRoot  = environment.API;              // '/api'
+  private readonly authBase = `${this.apiRoot}/auth`;       // '/api/auth'
+  private readonly userBase = `${this.apiRoot}/usuario`;
 
 
 
@@ -42,110 +43,17 @@ export class AuthService {
     }
   }
 
-
-  atualziaTokenAcesso(data): Observable<any> {
-    const url = `${this.apiUrl}/atualziaTokenAcesso`;
-    return this.http.post(url, data, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  login(username: string, password: string): Observable<any> {
-    const url = `${this.apiLogin}/login`;
-
-    // 1. Monta o form-encoded
-    const body = new HttpParams()
-      .set('username', username)
-      .set('password', password);
-
-    // 2. Define o header adequado
-    const headers = new HttpHeaders()
-      .set('Content-Type', 'application/x-www-form-urlencoded');
-
-    // 3. Envia a requisição
+  login(username: string, password: string) {
+    const body = new HttpParams().set('username', username).set('password', password);
+    const headers = new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded');
     return this.http.post<{ access_token: string; token_type: string }>(
-      url,
+      `${this.authBase}/login`,
       body.toString(),
       { headers }
     );
   }
 
-  fazerLoginNoModulo(): Observable<any> {
-    const url = `${this.apiUrl}/fazerLoginNoModulo`;
-    return this.http.get(url, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  trocarSenhaAutenticado(data): Observable<any> {
-    const url = `${this.apiUrl}/trocarSenhaAutenticado`;
-    return this.http.post(url, data, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  editarUsuarioFilho(data): Observable<any> {
-    const url = `${this.apiUrl}/editarUsuarioFilho`;
-    return this.http.post(url, data, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  cadastrar(data): Observable<any> {
-    const url = `${this.apiLogin}/auth/register`;
-    return this.http.post(url, data, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  verificarEmail(data): Observable<any> {
-    const url = `${this.apiUrl}/verificaEmail`;
-    return this.http.post(url, data, this.headersSimpleJSON())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  editarSenhaEsquecida(data): Observable<any> {
-    const url = `${this.apiUrl}/editarSenhaEsquecida`;
-    return this.http.post(url, data, this.headersSimpleJSON())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  pagante(): Observable<any> {
-    const url = `${this.apiUrl}/pagante`;
-    return this.http.get(url, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  recuperarSenha(data): Observable<any> {
-    const url = `${this.apiUrl}/recuperarSenha`;
-    return this.http.post(url, data, this.headersSimpleJSON())
-      .pipe(catchError(this.handleError)
-      );
-  }
-  loginVidraAdm(token: string): Observable<any> {
-    const url = `${this.apiUrl}/loginVidraAdm/${token}`;
-    return this.http.get(url, this.headersSimpleJSON())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  verificarAceitouTermosUso(): Observable<any> {
-    const url = `${this.apiUrl}/verificaAceitouTermos`;
-    return this.http.get(url, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
-  aceitarTermosUso(data): Observable<any> {
-    const url = `${this.apiUrl}/aceitarTermosUso`;
-    return this.http.post(url, data, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
-
+  
   clearCookies(): void {
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
@@ -179,11 +87,5 @@ export class AuthService {
     return this.storageService.getItem(LocalStorageVariables.USUARIO)
   }
 
-  verificaSeTemAcessoNota(): Observable<any> {
-    const url = `${this.apiUrl}/liberarGerarNota`;
-    return this.http.post(url, {}, this.headers())
-      .pipe(catchError(this.handleError)
-      );
-  }
 
 }

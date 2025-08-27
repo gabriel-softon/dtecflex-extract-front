@@ -82,7 +82,7 @@ export class EntrarComponent implements OnInit {
         // system: SystemsEnum.AFILIADO,
       }
 
-      this.auth.login(objLogin.username, objLogin.password).pipe(take(1)).subscribe(result => {
+      this.auth.login(objLogin.username, objLogin.password).pipe(take(1)).subscribe((result: any) => {
 
         console.log('result:::',result)
 

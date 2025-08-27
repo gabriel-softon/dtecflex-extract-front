@@ -1,7 +1,5 @@
 export const environment = {
   production: false,
-  PROJETO_VERSION: 'dev-1728918368666',
-  ID_APP: 3,
-  MODO: 'DEV_LOCAL',
-  API: '/api',
+  API: 'http://localhost:8000/api',  // ou '/api' se usar proxy no ng serve (ver abaixo)
+  PROJETO_VERSION: 'dev'
 };
