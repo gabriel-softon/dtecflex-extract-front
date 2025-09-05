@@ -16,7 +16,6 @@ export class ApiService {
     private http: HttpClient
   ) { }
 
-  /** Busca lista de notícias com paginação e filtros */
   getNoticias(
     page: number,
     limit: number,
@@ -118,12 +117,10 @@ export class ApiService {
     return this.http.delete<any>(endpoint);
   }
 
-  /** Busca todas as categorias */
   getCategorias(): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/categorias`);
   }
 
-  /** Dispara extração do texto da notícia pela URL */
   capturarTextoNoticia(payload: { url: string }): Observable<any> {
     return this.http.post<any>(
       `${this.apiUrl}/capturar-texto-noticia`,
@@ -131,7 +128,6 @@ export class ApiService {
     );
   }
 
-  /** Atualiza campos de uma notícia (PUT /noticias/{url}) */
   updateNoticia(id: number, data: any): Observable<any> {
     const endpoint = `${this.apiUrl}/${encodeURIComponent(id)}`;
     return this.http.put<any>(endpoint, data);
@@ -181,6 +177,34 @@ export class ApiService {
 
   deleteExtractedName(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/nome/${id}`);
+  }
+
+  verifyStatusAndUser(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/verify-status-and-user/${id}`)
+  }
+
+  transfer(date?: string, category?: string) {
+    const params: any = {};
+    if (date) params.date = date;          // 'YYYYMMDD'
+    if (category) params.category = category; // 'CR' | 'LD' | ... ou nome
+    return this.http.post(`${this.apiUrl}/transfer`, null, { params });
+  }
+
+  getActiveTransfers() {
+    return this.http.get<any>(`${this.apiUrl}/transfer/active`);
+  }
+
+    getTransferStatus(date8: string, categoryAbrev: string): Observable<any> {
+      const params = new HttpParams()
+        .set('date', date8)            // ex.: '20250905'
+        .set('category', categoryAbrev); // ex.: 'LD'
+      return this.http.get<any>(`${this.apiUrl}/transfer/status`, { params });
+    }
+
+  getNoticiasPorDataCategoria(dateYMD: string, category: string, page = 1, limit = 10) {
+    return this.http.get(`${this.apiUrl}/por-data-categoria`, {
+      params: { date: dateYMD, category, page, limit }
+    });
   }
 
   private extractData(res: Response) {

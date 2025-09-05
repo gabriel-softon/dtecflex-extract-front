@@ -1,7 +1,7 @@
 <div class="container pt-5">
 
   <div class="mb-3">
-    <div class="form-check form-check-inline">
+    <!-- <div class="form-check form-check-inline">
       <input class="form-check-input"
              type="radio"
              name="modoPublicacao"
@@ -10,89 +10,204 @@
              (ngModelChange)="onModoChange($event)"
              [value]="'registro'">
       <label class="form-check-label" for="modoRegistro">Publicar por registro</label>
-    </div>
+    </div> -->
 
     <div class="form-check form-check-inline">
-      <input class="form-check-input"
-             type="radio"
-             name="modoPublicacao"
-             id="modoData"
-             [(ngModel)]="modo"
-             (ngModelChange)="onModoChange($event)"
-             [value]="'data'">
+      <input class="form-check-input" type="radio" name="modoPublicacao" id="modoData" [(ngModel)]="modo"
+        (ngModelChange)="onModoChange($event)" [value]="'data'">
       <label class="form-check-label" for="modoData">Publicar por data</label>
     </div>
   </div>
 
+  <div class="mt-3">
+    <label class="form-label" for="categoriaSelect">Categoria</label>
+    <select id="categoriaSelect" class="form-select" [(ngModel)]="categoriaSelecionada"
+      (ngModelChange)="onCategoriaChange($event)">
+      <option value="" disabled>Selecione…</option>
+      <option value="CR">Crime</option>
+      <option value="LD">Lavagem de Dinheiro</option>
+      <option value="FF">Fraude</option>
+      <option value="SE">Empresarial</option>
+      <option value="SA">Ambiental</option>
+    </select>
+    <div class="form-text">Use a sigla que o backend aceita.</div>
+  </div>
+
   <div *ngIf="modo === 'registro'" class="mb-4">
     <label class="form-label" for="registroInput">Registro</label>
-    <input id="registroInput"
-           type="text"
-           class="form-control"
-           [(ngModel)]="registroInput"
-           placeholder="Digite o registro">
+    <input id="registroInput" type="text" class="form-control" [(ngModel)]="registroInput"
+      placeholder="Digite o registro">
     <div class="form-text">Por enquanto não executa publicação — apenas exibe no console.</div>
   </div>
 
   <div *ngIf="modo === 'data'" class="mb-4">
     <label class="form-label" for="dataInput">Data</label>
-    <input id="dataInput"
-          type="date"
-          class="form-control"
-          [(ngModel)]="dataInput"
-          (change)="onDateChange($event.target.value)">
+    <input id="dataInput" type="date" class="form-control" [(ngModel)]="dataInput"
+      (change)="onDateChange($event.target.value)">
     <div class="form-text">Ao selecionar a data, a listagem será filtrada automaticamente.</div>
   </div>
 
   <div class="d-flex align-items-center gap-2">
     <button class="btn btn-primary"
             (click)="publicar()"
-            [disabled]="isLoading || isPublishing">
+            [disabled]="isLoading
+                        || isPublishing
+                        || isSameAsActive()
+                        || (modo === 'data' && (!dataInput || !categoriaSelecionada))">
       {{ isPublishing ? 'Publicando…' : (isLoading ? 'Processando...' : 'Publicar') }}
     </button>
-    <div *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-label="Carregando listagem"></div>
+    <div *ngIf="isLoading" class="spinner-border spinner-border-sm" role="status" aria-label="Carregando listagem">
+    </div>
   </div>
 
   <div *ngIf="mensagem" class="alert alert-info mt-3" role="alert" aria-live="polite">
     {{ mensagem }}
   </div>
 
-  <div *ngIf="isPublishing" class="mt-4 d-flex flex-column align-items-center justify-content-center py-5" aria-live="polite">
-    <div class="spinner-border" style="width:3rem;height:3rem" role="status" aria-hidden="true"></div>
-    <div class="mt-3 fw-semibold">{{ publishLabel }}</div>
-  </div>
-
-  <div *ngIf="noticias?.length && !isPublishing" class="mt-4">
-    <h5 class="mb-3">Resultados</h5>
-
-    <div class="row g-3">
-      <div class="col-12 col-md-6 col-lg-4" *ngFor="let n of noticias">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body d-flex flex-column">
-            <h6 class="card-title mb-2" [title]="n?.TITULO || 'Sem título'">
-              {{ n?.TITULO || 'Sem título' }}
-            </h6>
-
-            <div class="mb-3 small text-muted">
-              <span class="fw-semibold">Registro:</span>
-              <span class="ms-1">{{ n?.REG_NOTICIA ?? '—' }}</span>
-            </div>
-
-            <div class="mt-auto">
-              <div class="d-flex flex-wrap gap-1" *ngIf="n?.nomes_raspados?.length; else semNomes">
-                <span class="badge text-bg-secondary" *ngFor="let p of n.nomes_raspados">
-                  {{ p?.NOME || 'Sem nome' }}<ng-container *ngIf="p?.ENVOLVIMENTO"> — {{ p.ENVOLVIMENTO }}</ng-container>
-                </span>
-              </div>
-              <ng-template #semNomes>
-                <span class="text-muted small">Sem nomes raspados</span>
-              </ng-template>
-            </div>
-
-          </div>
+  <div *ngIf="activeJob && (activeJob.progress ?? 0) < 100 && activeJob.state !== 'FAILED'"
+      class="alert alert-warning mt-3 d-flex align-items-center justify-content-between">
+    <div class="me-3">
+      <strong>Publicação em andamento:</strong>
+      {{ formatDate8(activeJob.date) }} — {{ catLabel(activeJob.category) }}
+      <span class="ms-2 badge bg-secondary">{{ activeJob.state || 'executando' }}</span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="progress" style="width: 220px; height: 16px;">
+        <div class="progress-bar" role="progressbar"
+            [style.width.%]="activeJob.progress || 0" aria-valuemin="0" aria-valuemax="100">
         </div>
       </div>
+      <span class="small">{{ activeJob.progress || 0 }}%</span>
     </div>
   </div>
+
+  <!-- Cabeçalho "estilo tabela" -->
+  <div class="table-responsive mt-4">
+    <table class="table table-hover align-middle mb-2">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 2.5rem;"></th>
+          <th>Título</th>
+          <th style="white-space: nowrap;">REG_NOTICIA</th>
+          <th style="white-space: nowrap;">STATUS</th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+
+  <mdb-accordion class="w-100">
+    <mdb-accordion-item *ngFor="let n of noticias; let i = index; trackBy: trackByNoticiaId"
+      [collapseId]="'news' + (n?.ID ?? i)">
+      <ng-template mdbAccordionItemHeader>
+        <div class="row w-100 py-2 align-items-center gx-2 px-2">
+          <div class="col-auto text-center" style="width: 2.5rem;">
+            <i class="fas fa-chevron-right me-1" aria-hidden="true"></i>
+            <span class="visually-hidden">Expandir</span>
+          </div>
+
+          <div class="col text-truncate" [title]="n?.TITULO || 'Sem título'">
+            {{ n?.TITULO || 'Sem título' }}
+          </div>
+
+          <div class="col-auto text-monospace" style="min-width: 12rem;">
+            {{ n?.REG_NOTICIA ?? '—' }}
+          </div>
+
+          <div class="col-auto">
+            <span class="badge" [ngClass]="statusMap[n?.STATUS]?.badgeClass || 'text-bg-secondary'">
+              {{ statusMap[n?.STATUS]?.label || n?.STATUS || '—' }}
+            </span>
+          </div>
+        </div>
+      </ng-template>
+
+      <ng-template mdbAccordionItemBody>
+        <div class="p-3 bg-body-tertiary rounded border">
+
+          <mdb-tabs [justified]="true">
+            <mdb-tab title="NOMES SISTEMA">
+              <ng-container *ngIf="n?.nomes_raspados?.length; else semNomesSistema">
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Nome</th>
+                        <th>Envolvimento</th>
+                        <th *ngIf="hasKey(n.nomes_raspados, 'DOCUMENTO')">Documento</th>
+                        <th *ngIf="hasKey(n.nomes_raspados, 'OBS')">Obs</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let e of n.nomes_raspados; trackBy: trackByNomeId">
+                        <td>{{ e?.NOME || '—' }}</td>
+                        <td>{{ e?.ENVOLVIMENTO || '—' }}</td>
+                        <td *ngIf="hasKey(n.nomes_raspados, 'DOCUMENTO')">{{ e?.DOCUMENTO || '—' }}</td>
+                        <td *ngIf="hasKey(n.nomes_raspados, 'OBS')">{{ e?.OBS || '—' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </ng-container>
+              <ng-template #semNomesSistema>
+                <p class="text-muted m-0">Nenhum nome do sistema para esta notícia.</p>
+              </ng-template>
+            </mdb-tab>
+
+            <mdb-tab title="NOMES_DTEC">
+              <ng-container *ngIf="n?.aux_registros?.length; else semNomesDtec">
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Nome</th>
+                        <th>Envolvimento</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of n.aux_registros; trackBy: trackByIdx">
+                        <td>{{ getDtecNome(row) }}</td>
+                        <td>{{ getDtecEnvolvimento(row) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </ng-container>
+              <ng-template #semNomesDtec>
+                <p class="text-muted m-0">Nenhum nome DTEC para esta notícia.</p>
+              </ng-template>
+            </mdb-tab>
+          </mdb-tabs>
+        </div>
+      </ng-template>
+    </mdb-accordion-item>
+  </mdb-accordion>
+
+  <nav *ngIf="totalPages > 1 && !isPublishing" aria-label="Paginação de notícias" class="mt-3">
+    <ul class="pagination justify-content-center">
+
+      <li class="page-item" [class.disabled]="page <= 1 || isLoading">
+        <a class="page-link" href="#" (click)="goPrev($event)" aria-label="Anterior">
+          &laquo;
+        </a>
+      </li>
+
+      <li class="page-item" *ngFor="let p of getPages()" [class.active]="p === page" [class.disabled]="isLoading">
+        <a class="page-link" href="#" (click)="goToPage(p); $event.preventDefault()">
+          {{ p }}
+        </a>
+      </li>
+
+      <li class="page-item" [class.disabled]="page >= totalPages || isLoading">
+        <a class="page-link" href="#" (click)="goNext($event)" aria-label="Próxima">
+          &raquo;
+        </a>
+      </li>
+
+    </ul>
+
+    <p class="text-center text-muted small mb-0">
+      Mostrando {{ noticias?.length || 0 }} de {{ totalCount }} itens • Página {{ page }} de {{ totalPages }}
+    </p>
+  </nav>
 
 </div>

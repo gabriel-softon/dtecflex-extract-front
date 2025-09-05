@@ -34,6 +34,7 @@ export class HomeComponent implements OnInit {
     '00-START-APPROVE': { label: 'Para aprovação', color: 'primary' },
     '203-PUBLISHED': { label: 'Publicadas', color: 'success' },
     '201-APPROVED': { label: 'Aprovadas', color: 'success' },
+    '200-TO-APPROVE': { label: 'Para aprovação', color: 'primary' }
   };
 
   noticias: any[] = [];
@@ -302,6 +303,24 @@ export class HomeComponent implements OnInit {
 
   toggleLayout() {
     this.isGridLayout = !this.isGridLayout;
+  }
+
+  verifyStatusNotice(noticia) {
+    this.apiService.verifyStatusAndUser(noticia.ID).subscribe({
+      next: (res) => {
+        if(res.habilitado) {
+          this.openFullscreenModal(noticia)
+        } else {
+          this.toastr.warning('Notícia já está em análise.')
+          this.loadNoticias()
+        }
+      },
+      error: err => {
+        this.toastr.error('Falha ao verificar status.');
+      },
+      complete: () => {
+      }
+    })
   }
 
   openFullscreenModal(noticia: any) {
