@@ -33,7 +33,14 @@ import { StorageService } from 'src/app/shared/service/storage.service';
 export class EntrarComponent implements OnInit {
   @ViewChild('modalRecuperacaoSenha') modalRecuperacaoSenha!: TemplateRef<any>;
   @ViewChild('modalCadastroUsuario') modalCadastroUsuario!: TemplateRef<any>;
+  hidePassword = true;
+  rememberMe = false;
+  submitted = false;
 
+  isInvalid(ctrl: string): boolean {
+    const c = this.loginForm.get(ctrl);
+    return !!(c && (c.touched || this.submitted) && c.invalid);
+  }
   inscricao: Subscription[] = [];
 
   loginForm = new FormGroup({

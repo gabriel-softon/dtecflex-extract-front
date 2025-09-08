@@ -1,57 +1,69 @@
-<form [formGroup]="loginForm" (ngSubmit)="submit()">
+<div class="min-vh-100 d-flex align-items-center justify-content-center auth-bg">
+  <div class="card shadow-lg border-0 rounded-4 auth-card">
+    <div class="card-body p-4 p-md-5">
+      <h1 class="h4 mb-1 text-center fw-semibold">Bem-vindo</h1>
+      <p class="text-secondary text-center mb-4">Entre para continuar</p>
 
-  <!-- Campo de e-mail -->
-  <div class="form-group">
-    <label for="username">Usuário</label>
-    <input
-      type="text"
-      id="username"
-      formControlName="username"
-      class="form-control"
-      placeholder="Digite seu usuário"
-      [class.is-invalid]="loginForm.get('username').touched && loginForm.get('username').invalid"
-    >
-    <div *ngIf="loginForm.get('username').touched && loginForm.get('username').invalid" class="invalid-feedback">
-      <div *ngIf="loginForm.get('username').errors?.required">
-        O usuário é obrigatório.
-      </div>
-      <div *ngIf="loginForm.get('username').errors?.email">
-        Formato de usuário inválido.
-      </div>
+      <form [formGroup]="loginForm" (ngSubmit)="submit()" novalidate>
+
+        <!-- Usuário -->
+        <div class="mb-3">
+          <label for="username" class="form-label">Usuário</label>
+          <div class="input-group input-group-lg has-validation">
+            <span class="input-group-text"><i class="fas fa-user"></i></span>
+            <input
+              id="username"
+              type="text"
+              class="form-control"
+              formControlName="username"
+              placeholder="Digite seu usuário"
+              autocomplete="username"
+              [class.is-invalid]="isInvalid('username')"
+            />
+            <div class="invalid-feedback">
+              <ng-container *ngIf="loginForm.get('username')?.errors?.['required']">O usuário é obrigatório.</ng-container>
+              <ng-container *ngIf="loginForm.get('username')?.errors?.['email']">Formato de usuário inválido.</ng-container>
+            </div>
+          </div>
+        </div>
+
+        <!-- Senha -->
+        <div class="mb-2">
+          <label for="password" class="form-label">Senha</label>
+          <div class="input-group input-group-lg has-validation">
+            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+            <input
+              id="password"
+              [type]="hidePassword ? 'password' : 'text'"
+              class="form-control"
+              formControlName="password"
+              placeholder="Digite sua senha"
+              autocomplete="current-password"
+              [class.is-invalid]="isInvalid('password')"
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary toggle-pass"
+              (click)="hidePassword = !hidePassword"
+              [attr.aria-label]="hidePassword ? 'Mostrar senha' : 'Ocultar senha'">
+              <i class="fas" [ngClass]="hidePassword ? 'fa-eye' : 'fa-eye-slash'"></i>
+            </button>
+            <div class="invalid-feedback w-100">
+              <ng-container *ngIf="loginForm.get('password')?.errors?.['required']">A senha é obrigatória.</ng-container>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botão -->
+        <button type="submit" class="btn btn-primary btn-lg w-100"
+                [disabled]="spinner || loginForm.invalid">
+          <ng-container *ngIf="!spinner">Entrar</ng-container>
+          <ng-container *ngIf="spinner">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Entrando…
+          </ng-container>
+        </button>
+      </form>
     </div>
   </div>
-
-  <!-- Campo de senha -->
-  <div class="form-group">
-    <label for="password">Senha</label>
-    <input
-      type="password"
-      id="password"
-      formControlName="password"
-      class="form-control"
-      placeholder="Digite sua senha"
-      [class.is-invalid]="loginForm.get('password').touched && loginForm.get('password').invalid"
-    >
-    <div *ngIf="loginForm.get('password').touched && loginForm.get('password').invalid" class="invalid-feedback">
-      <div *ngIf="loginForm.get('password').errors?.required">
-        A senha é obrigatória.
-      </div>
-    </div>
-  </div>
-
-  <!-- Botão de envio com spinner -->
-  <button
-    type="submit"
-    class="btn btn-primary"
-    [disabled]="spinner || loginForm.invalid"
-  >
-    Entrar
-    <span
-      *ngIf="spinner"
-      class="spinner-border spinner-border-sm ml-2"
-      role="status"
-      aria-hidden="true"
-    ></span>
-  </button>
-
-</form>
+</div>
