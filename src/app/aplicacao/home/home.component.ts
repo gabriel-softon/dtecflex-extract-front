@@ -8,6 +8,7 @@ import { BsDatepickerConfig, BsDatepickerModule } from 'ngx-bootstrap/datepicker
 import { ApiService } from 'src/services/extract-api.service';
 import { MdbTabsModule } from 'mdb-angular-ui-kit/tabs';
 import { ToastrService } from 'ngx-toastr';
+import { finalize, take, timeout } from 'rxjs';
 
 @Component({
   selector: 'app-home',
@@ -81,7 +82,8 @@ export class HomeComponent implements OnInit {
   };
 
   newEntity: any | null = null;
-
+  trackByEntity = (_: number, e: any) => e?.ID ?? _;
+  
   startAddEntity() {
     this.newEntity = {
       NOME: '',
@@ -107,6 +109,23 @@ export class HomeComponent implements OnInit {
   dtecResults: any[] = [];
   dtecSearchQuery = '';
   dtecTargetEntity: any | null = null;
+
+  private originalPage1Snapshot: Partial<any> | null = null;
+
+
+  private readonly page1Fields = [
+    'FONTE','TITULO','CATEGORIA','REGIAO','UF','REG_NOTICIA','TEXTO_NOTICIA'
+  ];
+
+  private readonly labels: Record<string,string> = {
+    FONTE: 'Fonte',
+    TITULO: 'Título',
+    CATEGORIA: 'Categoria',
+    REGIAO: 'Região',
+    UF: 'UF',
+    REG_NOTICIA: 'Reg. Notícia',
+    TEXTO_NOTICIA: 'Texto da Notícia',
+  };
 
   constructor(
     private apiService: ApiService,
@@ -355,13 +374,18 @@ export class HomeComponent implements OnInit {
       }
     );
 
-    this.savedEntities = noticia.nomes_raspados?.map((n: any) => ({
-      ...n,
-      FLG_PESSOA_PUBLICA: n.FLG_PESSOA_PUBLICA === '1',
-      INDICADOR_PPE:       n.INDICADOR_PPE       === '1',
-      // ENVOLVIMENTO_GOV:     n.INDICADOR_PPE       === '1',
-      isSaving: false
-    })) ?? [];
+    this.savedEntities = noticia.nomes_raspados?.map((n: any) => {
+      const mapped = {
+        ...n,
+        FLG_PESSOA_PUBLICA: n.FLG_PESSOA_PUBLICA === '1',
+        INDICADOR_PPE:      n.INDICADOR_PPE      === '1',
+        isSaving:   false,
+        isDeleting: false,
+        isUpdating: false
+      };
+      mapped.__orig = this.pickEntityFields(mapped);
+      return mapped;
+    }) ?? [];
     this.isModalOpen     = true;
     this.modalPage       = 1;
     this.extractedEntities = [];
@@ -415,9 +439,7 @@ export class HomeComponent implements OnInit {
   }
 
   prevModalPage() {
-    if (this.modalPage > 1) {
-      this.modalPage--;
-    }
+    if (this.modalPage > 1) this.modalPage--;
   }
 
   saveNoticia(): void {
@@ -461,42 +483,44 @@ export class HomeComponent implements OnInit {
     entity.isSaving = true;
 
     const payload = {
-      noticia_id:          this.selectedNoticia.ID,
-      nome:                entity.NOME,
-      cpf:                 entity.CPF,
-      apelido:             entity.APELIDO,
-      nome_cpf:            entity.NOME_CPF,
-      operacao:            entity.OPERACAO,
-      sexo:                entity.SEXO,
-      pessoa:              entity.PESSOA,
-      idade:               entity.IDADE,
-      atividade:           entity.ATIVIDADE,
-      envolvimento:        entity.ENVOLVIMENTO,
-      tipo_suspeita:       entity.INDICADOR_PPE ? 'PPE' : null,
-      flg_pessoa_publica:  entity.FLG_PESSOA_PUBLICA,
-      indicador_ppe:       entity.INDICADOR_PPE,
-      aniversario:         entity.ANIVERSARIO
+      noticia_id:         this.selectedNoticia.ID,
+      nome:               entity.NOME,
+      cpf:                entity.CPF,
+      apelido:            entity.APELIDO,
+      nome_cpf:           entity.NOME_CPF,
+      operacao:           entity.OPERACAO,
+      sexo:               entity.SEXO,
+      pessoa:             entity.PESSOA,
+      idade:              entity.IDADE,
+      atividade:          entity.ATIVIDADE,
+      envolvimento:       entity.ENVOLVIMENTO,
+      tipo_suspeita:      entity.INDICADOR_PPE ? 'PPE' : null,
+      flg_pessoa_publica: entity.FLG_PESSOA_PUBLICA,
+      indicador_ppe:      entity.INDICADOR_PPE,
+      aniversario:        entity.ANIVERSARIO ? entity.ANIVERSARIO : null,
     };
 
     this.apiService.saveExtractedName(payload).subscribe({
       next: (res: any) => {
         entity.ID = res.id;
-
-        this.savedEntities.push({ ...entity });
-        this.extractedEntities = this.extractedEntities.filter(e => e !== entity);
-
-        if (!this.selectedNoticia.nomes_raspados) {
-          this.selectedNoticia.nomes_raspados = [];
-        }
-        this.selectedNoticia.nomes_raspados.push({ ...entity });
-
-        this.toastr.success('Nome salvo com sucesso!');
         entity.isSaving = false;
 
-        if (this.newEntity === entity) {
-          this.newEntity = null;
-        }
+        const savedClone = {
+          ...entity,
+          isSaving:   false,
+          isDeleting: false,
+          isUpdating: false
+        } as any;
+        savedClone.__orig = this.pickEntityFields(savedClone);
 
+        this.savedEntities.push(savedClone);
+        this.extractedEntities = this.extractedEntities.filter(e => e !== entity);
+
+        if (!this.selectedNoticia.nomes_raspados) this.selectedNoticia.nomes_raspados = [];
+        this.selectedNoticia.nomes_raspados.push({ ...savedClone });
+
+        this.toastr.success('Nome salvo com sucesso!');
+        if (this.newEntity === entity) this.newEntity = null;
         this.generateHighlightedText();
       },
       error: err => {
@@ -507,24 +531,95 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  deleteEntity(entity: any): void {
-    if (!entity.ID) return;
-    entity.isSaving = true;
+  updateEntity(entity: any, ev?: Event): void {
+    ev?.preventDefault();
+    ev?.stopPropagation();
 
-    this.apiService.deleteExtractedName(entity.ID).subscribe({
-      next: () => {
-        this.savedEntities = this.savedEntities.filter(e => e.ID !== entity.ID);
-        entity.isSaving = false;
-        delete entity.ID;
-        this.extractedEntities.push(entity);
-        this.toastr.success('Nome removido com sucesso!');
-      },
-      error: err => {
-        console.error('Erro ao remover entidade:', err);
-        entity.isSaving = false;
-        this.toastr.error('Falha ao remover.');
-      }
-    });
+    // se não tem ID, é novo -> salva em vez de atualizar
+    if (!entity?.ID) {
+      this.saveEntity(entity);
+      return;
+    }
+    if (entity.isUpdating) return;
+    if (!this.isEntityDirty(entity)) {
+      this.toastr.info('Nada para atualizar.');
+      return;
+    }
+
+    entity.isUpdating = true;
+
+    const payload = {
+      noticia_id:         this.selectedNoticia?.ID,
+      nome:               entity.NOME,
+      cpf:                entity.CPF,
+      apelido:            entity.APELIDO,
+      nome_cpf:           entity.NOME_CPF,
+      operacao:           entity.OPERACAO,
+      sexo:               entity.SEXO,
+      pessoa:             entity.PESSOA,
+      idade:              entity.IDADE,
+      atividade:          entity.ATIVIDADE,
+      envolvimento:       entity.ENVOLVIMENTO,
+      tipo_suspeita:      entity.INDICADOR_PPE ? 'PPE' : null,
+      flg_pessoa_publica: entity.FLG_PESSOA_PUBLICA,
+      indicador_ppe:      entity.INDICADOR_PPE,
+      aniversario:        entity.ANIVERSARIO ? entity.ANIVERSARIO : null,
+    };
+
+    const dto = this.buildNomeUpdatePayload(entity);
+    this.apiService.updateExtractedName(entity.ID, dto)
+      .pipe(take(1), finalize(() => entity.isUpdating = false))
+      .subscribe({
+        next: (res: any) => {
+          // se o backend devolver algo novo, faça merge aqui
+          // Object.assign(entity, res);
+
+          // atualiza baseline para limpar o "sujo"
+          entity.__orig = this.pickEntityFields(entity);
+
+          this.toastr.success('Nome atualizado com sucesso!');
+          // se o NOME mudou, re-render dos destaques
+          this.generateHighlightedText();
+        },
+        error: (err) => {
+          console.error('Erro ao atualizar entidade:', err);
+          this.toastr.error('Falha ao atualizar nome.');
+        }
+      });
+  }
+
+  deleteEntity(entity: any, ev?: Event): void {
+    ev?.preventDefault();
+    ev?.stopPropagation();
+
+    if (!entity?.ID) {
+      this.toastr.warning('Registro sem ID — não foi salvo ainda.');
+      return;
+    }
+    if (entity.isDeleting) return;
+
+    entity.isDeleting = true;
+    const id = entity.ID;
+
+    this.apiService.deleteExtractedName(id)
+      .pipe(finalize(() => entity.isDeleting = false))
+      .subscribe({
+        next: () => {
+          this.savedEntities = this.savedEntities.filter(e => e.ID !== id);
+
+          const clone = { ...entity, isSaving: false, isDeleting: false, isUpdating: false } as any;
+          delete clone.ID;
+          delete clone.__orig; // volta como rascunho, sem baseline
+          this.extractedEntities.push(clone);
+
+          this.toastr.success('Nome removido com sucesso!');
+          this.generateHighlightedText();
+        },
+        error: (err) => {
+          console.error('Erro ao remover entidade:', err);
+          this.toastr.error('Falha ao remover.');
+        }
+      });
   }
 
   extractNames(): void {
@@ -544,6 +639,51 @@ export class HomeComponent implements OnInit {
           this.isExtractingNames = false;
         }
       );
+  }
+
+  buildNomeUpdatePayload(entity: any) {
+    const map = {
+      NOME: 'nome', CPF: 'cpf', APELIDO: 'apelido', NOME_CPF: 'nome_cpf',
+      OPERACAO: 'operacao', SEXO: 'sexo', PESSOA: 'pessoa', IDADE: 'idade',
+      ATIVIDADE: 'atividade', ENVOLVIMENTO: 'envolvimento',
+      TIPO_SUSPEITA: 'tipo_suspeita',
+      FLG_PESSOA_PUBLICA: 'flg_pessoa_publica',
+      INDICADOR_PPE: 'indicador_ppe',
+      ANIVERSARIO: 'aniversario',
+    };
+    const dto: any = { id: entity.ID };
+    const toNull = (v: any) => (typeof v === 'string' && v.trim() === '' ? null : v);
+
+    for (const k in map) {
+      const cur = entity[k];
+      const old = entity.__orig ? entity.__orig[k] : undefined;
+      if (JSON.stringify(cur) !== JSON.stringify(old)) {
+        dto[map[k]] = k === 'ANIVERSARIO' ? toNull(cur) : toNull(cur);
+      }
+    }
+    return dto;
+  }
+
+  onRegNoticiaFileSelected(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    // só permite .htm/.html
+    if (!/\.html?$/i.test(file.name)) {
+      this.toastr?.warning?.('Selecione um arquivo .htm ou .html.');
+      input.value = ''; // limpa a seleção
+      return;
+    }
+
+    // pega o nome sem a extensão
+    const baseName = file.name.replace(/\.html?$/i, '').trim();
+
+    // seta no modelo (sem fazer upload do arquivo)
+    this.selectedNoticia.REG_NOTICIA = baseName;
+
+    // opcional: limpar o input file pra poder escolher o mesmo nome novamente se quiser
+    input.value = '';
   }
 
   confirmAnalyse(noticia) {
@@ -627,11 +767,13 @@ export class HomeComponent implements OnInit {
       fonte: '',
       categoria: this.selectedCategoria || ''
     };
+    this.originalPage1Snapshot = this.pickPage1(this.selectedNoticia);
   }
 
   closeAddModal() {
     if (this.isCreating) return;
     this.isAddModalOpen = false;
+    this.originalPage1Snapshot = null;
   }
 
   private mapApiNoticiaToUI(res: any): any {
@@ -745,4 +887,80 @@ export class HomeComponent implements OnInit {
       else if (e.envolvimento_gov != null) e.ENVOLVIMENTO_GOV = this.snToBool(e.envolvimento_gov);
     });
   }
+
+  private pickPage1(n: Partial<any>): Partial<any> {
+    const out: any = {};
+    for (const k of this.page1Fields) out[k as string] = (n as any)?.[k] ?? '';
+    return out;
+  }
+
+  private validatePage1() {
+    const current = this.pickPage1(this.selectedNoticia || {});
+    const emptyFields = Object.entries(current)
+      .filter(([_, v]) => (v === null || v === undefined || String(v).trim() === ''))
+      .map(([k]) => k);
+
+    const changed =
+      JSON.stringify(current) !== JSON.stringify(this.originalPage1Snapshot);
+
+    return { emptyFields, changed };
+  }
+
+  async tryNextPage() {
+    if (this.modalPage !== 1) return;
+
+    const { emptyFields, changed } = this.validatePage1();
+
+    if (emptyFields.length) {
+      const nomes = emptyFields.map(f => this.labels[f] ?? f).join(', ');
+      // use seu toast/alert preferido
+      alert(`Preencha os campos: ${nomes}.`);
+      return;
+    }
+
+    if (!changed) {
+      // alert('Nenhuma alteração detectada nos campos da página 1.');
+      // return;
+    }
+
+    // Precisa salvar antes de ir para a 2ª página
+    try {
+      this.isSaving = true;
+      await this.saveNoticia();               // use seu método real
+      this.originalPage1Snapshot = this.pickPage1(this.selectedNoticia); // atualiza baseline
+      this.modalPage = 2;
+    } catch (e) {
+      alert('Erro ao salvar. Verifique e tente novamente.');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  private pickEntityFields(e: any) {
+    const keys = [
+      'NOME','CPF','APELIDO','NOME_CPF','OPERACAO','SEXO','PESSOA',
+      'IDADE','ATIVIDADE','ENVOLVIMENTO','ANIVERSARIO',
+      'FLG_PESSOA_PUBLICA','INDICADOR_PPE','ENVOLVIMENTO_GOV'
+    ];
+    const out: any = {};
+    for (const k of keys) out[k] = e?.[k] ?? null;
+    return out;
+  }
+
+  isEntityDirty(e: any): boolean {
+    if (!e) return false;
+    if (!e.__orig) return true; // sem baseline, consideramos “sujo”
+    return JSON.stringify(this.pickEntityFields(e)) !== JSON.stringify(e.__orig);
+  }
+
+
+
+  isChanged(field): boolean {
+    if (!this.originalPage1Snapshot) return false;
+    const cur = (this.selectedNoticia as any)?.[field] ?? '';
+    const old = (this.originalPage1Snapshot as any)?.[field] ?? '';
+    return String(cur) !== String(old);
+  }
+
+
 }

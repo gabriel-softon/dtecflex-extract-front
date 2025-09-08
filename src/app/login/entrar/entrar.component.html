@@ -2,21 +2,21 @@
 
   <!-- Campo de e-mail -->
   <div class="form-group">
-    <label for="username">E-mail</label>
+    <label for="username">Usuário</label>
     <input
       type="text"
       id="username"
       formControlName="username"
       class="form-control"
-      placeholder="Digite seu e-mail"
+      placeholder="Digite seu usuário"
       [class.is-invalid]="loginForm.get('username').touched && loginForm.get('username').invalid"
     >
     <div *ngIf="loginForm.get('username').touched && loginForm.get('username').invalid" class="invalid-feedback">
       <div *ngIf="loginForm.get('username').errors?.required">
-        O e-mail é obrigatório.
+        O usuário é obrigatório.
       </div>
       <div *ngIf="loginForm.get('username').errors?.email">
-        Formato de e-mail inválido.
+        Formato de usuário inválido.
       </div>
     </div>
   </div>

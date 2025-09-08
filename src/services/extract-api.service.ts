@@ -133,6 +133,14 @@ export class ApiService {
     return this.http.put<any>(endpoint, data);
   }
 
+  updateExtractedName(id: number, data: any): Observable<any> {
+    const endpoint = `${this.apiUrl}/nome/${encodeURIComponent(id)}`;
+
+    const body = { id, ...data };
+
+    return this.http.put<any>(endpoint, body);
+  }
+
   updateNomesMany(noticiaId: number | string, nomes: any[]) {
     const endpoint = `${this.apiUrl}/${encodeURIComponent(noticiaId)}/nomes/batch`;
 

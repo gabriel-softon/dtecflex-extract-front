@@ -257,8 +257,11 @@
             <i class="fas fa-arrow-left"></i>
           </button>
           <h6 class="modal-title mb-0">{{ selectedNoticia?.TITULO }}</h6>
-          <button type="button" class="btn btn-outline-secondary ms-2" (click)="nextModalPage()"
-            [disabled]="modalPage === 2">
+          <button
+            type="button"
+            class="btn btn-outline-secondary ms-2"
+            (click)="tryNextPage()"
+            [disabled]="modalPage === 2 || isSaving">
             <i class="fas fa-arrow-right"></i>
           </button>
         </div>
@@ -271,34 +274,62 @@
             <div class="row">
               <div class="col-md-4 mb-3">
                 <label for="fonte" class="form-label">Fonte</label>
-                <input id="fonte" name="fonte" type="text" class="form-control" [(ngModel)]="selectedNoticia.FONTE"
-                  placeholder="Informe a fonte" />
+                <input required id="fonte" name="fonte" type="text" class="form-control"
+                      [(ngModel)]="selectedNoticia.FONTE" placeholder="Informe a fonte" />
               </div>
+
               <div class="col-md-4 mb-3">
                 <label for="titulo" class="form-label">Título</label>
-                <input id="titulo" name="titulo" type="text" class="form-control" [(ngModel)]="selectedNoticia.TITULO"
-                  placeholder="Informe o título" />
+                <input required id="titulo" name="titulo" type="text" class="form-control"
+                      [(ngModel)]="selectedNoticia.TITULO" placeholder="Informe o título" />
               </div>
+
               <div class="col-md-4 mb-3">
                 <label for="categoria" class="form-label">Categoria</label>
-                <input id="categoria" name="categoria" type="text" class="form-control"
-                  [(ngModel)]="selectedNoticia.CATEGORIA" placeholder="Informe a categoria" />
+                <input required id="categoria" name="categoria" type="text" class="form-control"
+                      [(ngModel)]="selectedNoticia.CATEGORIA" placeholder="Informe a categoria" />
               </div>
 
               <div class="col-md-4 mb-3">
                 <label for="regiao" class="form-label">Região</label>
-                <input id="regiao" name="regiao" type="text" class="form-control" [(ngModel)]="selectedNoticia.REGIAO"
-                  placeholder="Informe a região" />
+                <input required id="regiao" name="regiao" type="text" class="form-control"
+                      [(ngModel)]="selectedNoticia.REGIAO" placeholder="Informe a região" />
               </div>
+
               <div class="col-md-4 mb-3">
                 <label for="uf" class="form-label">UF</label>
-                <input id="uf" name="uf" type="text" class="form-control" [(ngModel)]="selectedNoticia.UF"
-                  placeholder="Informe a UF" />
+                <input required id="uf" name="uf" type="text" class="form-control"
+                      [(ngModel)]="selectedNoticia.UF" placeholder="Informe a UF" />
               </div>
+
+              <!-- Reg Notícia como "uploader" que só lê o nome do arquivo -->
               <div class="col-md-4 mb-3">
-                <label for="regNoticia" class="form-label">Reg Notícia</label>
-                <input id="regNoticia" name="regNoticia" type="text" class="form-control"
-                  [(ngModel)]="selectedNoticia.REG_NOTICIA" placeholder="Informe o registro" />
+                <label class="form-label">Reg Notícia</label>
+                <div class="input-group">
+                  <input
+                    id="regNoticia"
+                    name="regNoticia"
+                    type="text"
+                    class="form-control"
+                    [readOnly]="true"
+                    required
+                    [(ngModel)]="selectedNoticia.REG_NOTICIA"
+                    placeholder="Selecione um .htm para preencher"
+                  />
+                  <button type="button" class="btn btn-outline-secondary" (click)="regFile.click()">
+                    Selecionar .htm
+                  </button>
+                </div>
+
+                <!-- file input oculto: só para escolher o arquivo -->
+                <input
+                  #regFile
+                  type="file"
+                  class="d-none"
+                  accept=".htm,.html"
+                  (change)="onRegNoticiaFileSelected($event)"
+                />
+                <small class="text-muted">Usaremos apenas o nome do arquivo (sem a extensão).</small>
               </div>
             </div>
 
@@ -310,9 +341,15 @@
                 </div>
                 <span class="ms-2">Extraindo notícia...</span>
               </div>
-              <textarea *ngIf="!isExtractingText" id="textoNoticia" name="textoNoticia" rows="10"
-                class="form-control w-100" [(ngModel)]="selectedNoticia.TEXTO_NOTICIA"
-                placeholder="O texto aparecerá aqui após a extração"></textarea>
+              <textarea
+                *ngIf="!isExtractingText"
+                id="textoNoticia"
+                name="textoNoticia"
+                rows="10"
+                class="form-control w-100"
+                [(ngModel)]="selectedNoticia.TEXTO_NOTICIA"
+                placeholder="O texto aparecerá aqui após a extração"
+              ></textarea>
             </div>
           </form>
         </div>
@@ -338,64 +375,74 @@
 
           <h5 class="mb-2">Nomes Salvos</h5>
           <mdb-accordion *ngIf="savedEntities.length > 0">
-            <mdb-accordion-item *ngFor="let entity of savedEntities; let i = index" collapseId="saved{{ i }}">
+            <mdb-accordion-item
+              *ngFor="let entity of savedEntities; let i = index; trackBy: trackByEntity"
+              collapseId="saved{{ i }}">
               <ng-template mdbAccordionItemHeader>
                 {{ entity.NOME }}
               </ng-template>
               <ng-template mdbAccordionItemBody>
-                <form class="row gx-3 gy-2">
+                <form class="row gx-3 gy-2" novalidate>
 
                   <!-- Linha 1 -->
                   <div class="col-md-4">
                     <label class="form-label">Nome</label>
-                    <input class="form-control" [(ngModel)]="entity.NOME" name="nomeS{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.NOME" name="nomeS{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">CPF</label>
-                    <input class="form-control" [(ngModel)]="entity.CPF" name="cpfS{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.CPF" name="cpfS{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Apelido</label>
-                    <input class="form-control" [(ngModel)]="entity.APELIDO" name="apelidoS{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.APELIDO" name="apelidoS{{i}}" />
                   </div>
 
                   <!-- Linha 2 -->
                   <div class="col-md-4">
-                    <label class="form-label">Nome‑CPF</label>
-                    <input class="form-control" [(ngModel)]="entity.NOME_CPF" name="nomeCpfS{{i}}" />
+                    <label class="form-label">Nome-CPF</label>
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.NOME_CPF" name="nomeCpfS{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Operação</label>
-                    <input class="form-control" [(ngModel)]="entity.OPERACAO" name="operacaoS{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.OPERACAO" name="operacaoS{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Atividade</label>
-                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ATIVIDADE"
+                    <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="entity.ATIVIDADE"
                       name="atividadeS{{i}}"></textarea>
                   </div>
 
                   <!-- Linha 3 -->
                   <div class="col-md-3">
                     <label class="form-label">Sexo</label>
-                    <input class="form-control" [(ngModel)]="entity.SEXO" name="sexoS{{i}}" />
+                    <select class="form-select form-select-sm" [(ngModel)]="entity.SEXO" name="sexoS{{i}}">
+                      <option [ngValue]="null">n/a</option>
+                      <option [ngValue]="'F'">F</option>
+                      <option [ngValue]="'M'">M</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Pessoa</label>
-                    <input class="form-control" [(ngModel)]="entity.PESSOA" name="pessoaS{{i}}" />
+                    <select class="form-select form-select-sm" [(ngModel)]="entity.PESSOA" name="pessoaS{{i}}">
+                      <option [ngValue]="null">n/a</option>
+                      <option [ngValue]="'PF'">PF</option>
+                      <option [ngValue]="'PJ'">PJ</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Idade</label>
-                    <input type="number" class="form-control" [(ngModel)]="entity.IDADE" name="idadeS{{i}}" />
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="entity.IDADE" name="idadeS{{i}}" />
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Aniversário</label>
-                    <input type="date" class="form-control" [(ngModel)]="entity.ANIVERSARIO" name="aniversarioS{{i}}" />
+                    <input type="date" class="form-control form-control-sm" [(ngModel)]="entity.ANIVERSARIO" name="aniversarioS{{i}}" />
                   </div>
 
                   <!-- Linha 4 -->
                   <div class="col-md-6">
                     <label class="form-label">Envolvimento</label>
-                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ENVOLVIMENTO"
+                    <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="entity.ENVOLVIMENTO"
                       name="envolvimentoS{{i}}"></textarea>
                   </div>
                   <div class="col-md-6">
@@ -409,18 +456,32 @@
                         name="indicadorPpeS{{i}}" id="indicadorPpeS{{i}}" />
                       <label class="form-check-label" for="indicadorPpeS{{i}}">Indicador PPE</label>
                     </div>
-                    <div class="form-check">
+                    <!-- <div class="form-check">
                       <input class="form-check-input" type="checkbox" [(ngModel)]="entity.ENVOLVIMENTO_GOV"
                         name="envolvimentoGovS{{i}}" id="envolvimentoGovS{{i}}" />
                       <label class="form-check-label" for="envolvimentoGovS{{i}}">Envolvimento Gov</label>
-                    </div>
+                    </div> -->
                   </div>
 
-                  <!-- Botão Remover -->
                   <div class="col-12 text-end mt-3">
-                    <button class="btn btn-sm btn-danger" (click)="deleteEntity(entity)" [disabled]="entity.isSaving">
-                      <span *ngIf="entity.isSaving" class="spinner-border spinner-border-sm me-1"></span>
-                      {{ entity.isSaving ? 'Removendo…' : 'Remover' }}
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-primary me-2"
+                      (click)="updateEntity(entity, $event)"
+                      [disabled]="entity.isUpdating || !isEntityDirty(entity)"
+                    >
+                      <span *ngIf="entity.isUpdating" class="spinner-border spinner-border-sm me-1"></span>
+                      {{ entity.isUpdating ? 'Atualizando…' : 'Atualizar' }}
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger"
+                      (click)="deleteEntity(entity, $event)"
+                      [disabled]="entity.isDeleting"
+                    >
+                      <span *ngIf="entity.isDeleting" class="spinner-border spinner-border-sm me-1"></span>
+                      {{ entity.isDeleting ? 'Removendo…' : 'Remover' }}
                     </button>
                   </div>
                 </form>
@@ -443,8 +504,8 @@
                   <div class="col-md-4">
                     <label class="form-label">Nome</label>
                     <div class="input-group">
-                      <input class="form-control" [(ngModel)]="newEntity.NOME" name="nomeN" />
-                      <button type="button" class="btn btn-outline-secondary"
+                      <input class="form-control form-control-sm" [(ngModel)]="newEntity.NOME" name="nomeN" />
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
                               (click)="openDtecModalFor(newEntity, newEntity.NOME)" [disabled]="!newEntity.NOME">
                         <i class="fas fa-search"></i>
                       </button>
@@ -452,49 +513,57 @@
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">CPF</label>
-                    <input class="form-control" [(ngModel)]="newEntity.CPF" name="cpfN" />
+                    <input class="form-control form-control-sm" [(ngModel)]="newEntity.CPF" name="cpfN" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Apelido</label>
-                    <input class="form-control" [(ngModel)]="newEntity.APELIDO" name="apelidoN" />
+                    <input class="form-control form-control-sm" [(ngModel)]="newEntity.APELIDO" name="apelidoN" />
                   </div>
 
                   <!-- Linha 2 -->
                   <div class="col-md-4">
                     <label class="form-label">Nome-CPF</label>
-                    <input class="form-control" [(ngModel)]="newEntity.NOME_CPF" name="nomeCpfN" />
+                    <input class="form-control form-control-sm" [(ngModel)]="newEntity.NOME_CPF" name="nomeCpfN" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Operação</label>
-                    <input class="form-control" [(ngModel)]="newEntity.OPERACAO" name="operacaoN" />
+                    <input class="form-control form-control-sm" [(ngModel)]="newEntity.OPERACAO" name="operacaoN" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Atividade</label>
-                    <textarea class="form-control" rows="2" [(ngModel)]="newEntity.ATIVIDADE" name="atividadeN"></textarea>
+                    <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="newEntity.ATIVIDADE" name="atividadeN"></textarea>
                   </div>
 
                   <!-- Linha 3 -->
                   <div class="col-md-3">
                     <label class="form-label">Sexo</label>
-                    <input class="form-control" [(ngModel)]="newEntity.SEXO" name="sexoN" />
+                    <select class="form-select form-select-sm" [(ngModel)]="newEntity.SEXO" name="sexoN">
+                      <option [ngValue]="null">n/a</option>
+                      <option [ngValue]="'F'">F</option>
+                      <option [ngValue]="'M'">M</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Pessoa</label>
-                    <input class="form-control" [(ngModel)]="newEntity.PESSOA" name="pessoaN" />
+                    <select class="form-select form-select-sm" [(ngModel)]="newEntity.PESSOA" name="pessoaN">
+                      <option [ngValue]="null">n/a</option>
+                      <option [ngValue]="'PF'">PF</option>
+                      <option [ngValue]="'PJ'">PJ</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Idade</label>
-                    <input type="number" class="form-control" [(ngModel)]="newEntity.IDADE" name="idadeN" />
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="newEntity.IDADE" name="idadeN" />
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Aniversário</label>
-                    <input type="date" class="form-control" [(ngModel)]="newEntity.ANIVERSARIO" name="aniversarioN" />
+                    <input type="date" class="form-control form-control-sm" [(ngModel)]="newEntity.ANIVERSARIO" name="aniversarioN" />
                   </div>
 
                   <!-- Linha 4 -->
                   <div class="col-md-6">
                     <label class="form-label">Envolvimento</label>
-                    <textarea class="form-control" rows="2" [(ngModel)]="newEntity.ENVOLVIMENTO" name="envolvimentoN"></textarea>
+                    <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="newEntity.ENVOLVIMENTO" name="envolvimentoN"></textarea>
                   </div>
                   <div class="col-md-6">
                     <div class="form-check">
@@ -507,11 +576,11 @@
                             [(ngModel)]="newEntity.INDICADOR_PPE" name="indicadorPpeN" id="indicadorPpeN" />
                       <label class="form-check-label" for="indicadorPpeN">Indicador PPE</label>
                     </div>
-                    <div class="form-check">
+                    <!-- <div class="form-check">
                       <input class="form-check-input" type="checkbox"
                             [(ngModel)]="newEntity.ENVOLVIMENTO_GOV" name="envolvimentoGovN" id="envolvimentoGovN" />
                       <label class="form-check-label" for="envolvimentoGovN">Envolvimento Gov</label>
-                    </div>
+                    </div> -->
                   </div>
 
                   <!-- Ações -->
@@ -534,11 +603,6 @@
           <hr>
 
           <h5 class="mb-2">Nomes Extraídos</h5>
-          <!-- <button type="button" class="btn btn-primary btn-sm mb-3" (click)="extractNames()"
-            [disabled]="isExtractingNames">
-            <span *ngIf="isExtractingNames" class="spinner-border spinner-border-sm me-1"></span>
-            {{ isExtractingNames ? 'Extraindo…' : 'Extrair Nomes' }}
-          </button> -->
           <mdb-accordion *ngIf="extractedEntities.length > 0">
             <mdb-accordion-item *ngFor="let entity of extractedEntities; let i = index" collapseId="extr{{ i }}">
               <ng-template mdbAccordionItemHeader>
@@ -551,8 +615,8 @@
                   <div class="col-md-4">
                     <label class="form-label">Nome</label>
                     <div class="input-group">
-                      <input class="form-control" [(ngModel)]="entity.NOME" name="nomeE{{i}}" />
-                      <button type="button" class="btn btn-outline-secondary"
+                      <input class="form-control form-control-sm" [(ngModel)]="entity.NOME" name="nomeE{{i}}" />
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
                               (click)="openDtecModalFor(entity, entity.NOME)" [disabled]="!entity.NOME">
                         <i class="fas fa-search"></i>
                       </button>
@@ -560,47 +624,55 @@
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">CPF</label>
-                    <input class="form-control" [(ngModel)]="entity.CPF" name="cpfE{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.CPF" name="cpfE{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Apelido</label>
-                    <input class="form-control" [(ngModel)]="entity.APELIDO" name="apelidoE{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.APELIDO" name="apelidoE{{i}}" />
                   </div>
 
                   <div class="col-md-4">
-                    <label class="form-label">Nome‑CPF</label>
-                    <input class="form-control" [(ngModel)]="entity.NOME_CPF" name="nomeCpfE{{i}}" />
+                    <label class="form-label">Nome-CPF</label>
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.NOME_CPF" name="nomeCpfE{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Operação</label>
-                    <input class="form-control" [(ngModel)]="entity.OPERACAO" name="operacaoE{{i}}" />
+                    <input class="form-control form-control-sm" [(ngModel)]="entity.OPERACAO" name="operacaoE{{i}}" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Atividade</label>
-                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ATIVIDADE"
+                    <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="entity.ATIVIDADE"
                       name="atividadeE{{i}}"></textarea>
                   </div>
 
                   <div class="col-md-3">
                     <label class="form-label">Sexo</label>
-                    <input class="form-control" [(ngModel)]="entity.SEXO" name="sexoE{{i}}" />
+                    <select class="form-select form-select-sm" [(ngModel)]="entity.SEXO" name="sexoE{{i}}">
+                      <option [ngValue]="null">n/a</option>
+                      <option [ngValue]="'F'">F</option>
+                      <option [ngValue]="'M'">M</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Pessoa</label>
-                    <input class="form-control" [(ngModel)]="entity.PESSOA" name="pessoaE{{i}}" />
+                    <select class="form-select form-select-sm" [(ngModel)]="entity.PESSOA" name="pessoaE{{i}}">
+                      <option [ngValue]="null">n/a</option>
+                      <option [ngValue]="'PF'">PF</option>
+                      <option [ngValue]="'PJ'">PJ</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Idade</label>
-                    <input type="number" class="form-control" [(ngModel)]="entity.IDADE" name="idadeE{{i}}" />
+                    <input type="number" class="form-control form-control-sm" [(ngModel)]="entity.IDADE" name="idadeE{{i}}" />
                   </div>
                   <div class="col-md-3">
                     <label class="form-label">Aniversário</label>
-                    <input type="date" class="form-control" [(ngModel)]="entity.ANIVERSARIO" name="aniversarioE{{i}}" />
+                    <input type="date" class="form-control form-control-sm" [(ngModel)]="entity.ANIVERSARIO" name="aniversarioE{{i}}" />
                   </div>
 
                   <div class="col-md-6">
                     <label class="form-label">Envolvimento</label>
-                    <textarea class="form-control" rows="2" [(ngModel)]="entity.ENVOLVIMENTO"
+                    <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="entity.ENVOLVIMENTO"
                       name="envolvimentoE{{i}}"></textarea>
                   </div>
                   <div class="col-md-6">
@@ -614,11 +686,11 @@
                         name="indicadorPpeE{{i}}" id="indicadorPpeE{{i}}" />
                       <label class="form-check-label" for="indicadorPpeE{{i}}">Indicador PPE</label>
                     </div>
-                    <div class="form-check">
+                    <!-- <div class="form-check">
                       <input class="form-check-input" type="checkbox" [(ngModel)]="entity.ENVOLVIMENTO_GOV"
                         name="envolvimentoGovE{{i}}" id="envolvimentoGovE{{i}}" />
                       <label class="form-check-label" for="envolvimentoGovE{{i}}">Envolvimento Gov</label>
-                    </div>
+                    </div> -->
                   </div>
 
                   <div class="col-12 text-end mt-3">
@@ -636,6 +708,7 @@
           </p>
 
         </div>
+
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" [disabled]="isSaving" (click)="saveNoticia()"
