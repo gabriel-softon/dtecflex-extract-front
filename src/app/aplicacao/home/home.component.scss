@@ -140,3 +140,10 @@ button.btn-danger {
   }
 }
 
+.dtec-modal     { z-index: 1065; }
+.dtec-backdrop  {
+  z-index: 1060;
+  background-color: rgba(0,0,0,0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}

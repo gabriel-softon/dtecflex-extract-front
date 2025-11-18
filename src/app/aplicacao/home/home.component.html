@@ -298,7 +298,7 @@
 
               <div class="col-md-4 mb-3">
                 <label for="uf" class="form-label">UF</label>
-                <input required id="uf" name="uf" type="text" class="form-control"
+                <input id="uf" name="uf" type="text" class="form-control"
                       [(ngModel)]="selectedNoticia.UF" placeholder="Informe a UF" />
               </div>
 
@@ -732,7 +732,10 @@
   </div>
 </div>
 
-<div *ngIf="isDtecModalOpen" class="modal fade show d-block" tabindex="-1" aria-labelledby="dtecLabel" aria-hidden="true">
+<div *ngIf="isDtecModalOpen"
+     class="modal fade show d-block dtec-modal"
+     tabindex="-1" aria-labelledby="dtecLabel" aria-hidden="true">
+>
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
@@ -801,8 +804,9 @@
   </div>
 </div>
 
+<!-- backdrop do DTEC -->
 <div *ngIf="isDtecModalOpen"
-     class="modal-backdrop fade show"
+     class="modal-backdrop fade show dtec-backdrop"
      (click)="closeDtecModal()">
 </div>
 

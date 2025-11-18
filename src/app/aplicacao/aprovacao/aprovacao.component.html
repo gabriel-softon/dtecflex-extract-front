@@ -274,8 +274,8 @@
             <label class="form-label">Pessoa</label>
             <select class="form-select" [(ngModel)]="nomeForm.PESSOA" [disabled]="!isEditing(modalNoticiaTarget)">
               <option [ngValue]="null">—</option>
-              <option [ngValue]="'F'">Física</option>
-              <option [ngValue]="'J'">Jurídica</option>
+              <option [ngValue]="'PF'">PF</option>
+              <option [ngValue]="'PJ'">PJ</option>
             </select>
           </div>
           <div class="col-md-3">

@@ -117,6 +117,10 @@ export class HomeComponent implements OnInit {
     'FONTE','TITULO','CATEGORIA','REGIAO','UF','REG_NOTICIA','TEXTO_NOTICIA'
   ];
 
+  private readonly requiredPage1Fields = [
+    'FONTE','TITULO','CATEGORIA','REGIAO','REG_NOTICIA','TEXTO_NOTICIA'
+  ];
+
   private readonly labels: Record<string,string> = {
     FONTE: 'Fonte',
     TITULO: 'Título',
@@ -185,10 +189,10 @@ export class HomeComponent implements OnInit {
     this.dtecTargetEntity.NOME_CPF         = r.nome_cpf || this.dtecTargetEntity.NOME_CPF || '';
     this.dtecTargetEntity.SEXO             = r.sexo || this.dtecTargetEntity.SEXO || '';
     this.dtecTargetEntity.PESSOA           = r.pessoa || this.dtecTargetEntity.PESSOA || '';
-    this.dtecTargetEntity.ENVOLVIMENTO     = r.envolvimento || this.dtecTargetEntity.ENVOLVIMENTO || '';
-    this.dtecTargetEntity.IDADE            = r.idade ?? this.dtecTargetEntity.IDADE;
+    // this.dtecTargetEntity.ENVOLVIMENTO     = r.envolvimento || this.dtecTargetEntity.ENVOLVIMENTO || '';
+    // this.dtecTargetEntity.IDADE            = r.idade ?? this.dtecTargetEntity.IDADE;
     // flags S/N → boolean (checkbox na UI)
-    this.dtecTargetEntity.ENVOLVIMENTO_GOV = this.snToBool(r.envolvimento_gov);
+    // this.dtecTargetEntity.ENVOLVIMENTO_GOV = this.snToBool(r.envolvimento_gov);
     this.dtecTargetEntity.INDICADOR_PPE    = this.snToBool(r.ppe);
 
     this.generateHighlightedText();
@@ -446,12 +450,14 @@ export class HomeComponent implements OnInit {
     if (!this.selectedNoticia) return;
     this.isSaving = true;
 
+    const uf = (this.selectedNoticia.UF ?? '').toString().trim();
+
     const payload = {
       fonte:         this.selectedNoticia.FONTE,
       titulo:        this.selectedNoticia.TITULO,
       categoria:     this.selectedNoticia.CATEGORIA,
       regiao:        this.selectedNoticia.REGIAO,
-      uf:            this.selectedNoticia.UF,
+      uf:            uf ? uf : null,
       reg_noticia:   this.selectedNoticia.REG_NOTICIA,
       texto_noticia: this.selectedNoticia.TEXTO_NOTICIA,
     };
@@ -485,7 +491,8 @@ export class HomeComponent implements OnInit {
     const payload = {
       noticia_id:         this.selectedNoticia.ID,
       nome:               entity.NOME,
-      cpf:                entity.CPF,
+      cpf:                this.onlyDigits(entity.CPF),
+      cnpj:               this.onlyDigits((entity as any).CNPJ),
       apelido:            entity.APELIDO,
       nome_cpf:           entity.NOME_CPF,
       operacao:           entity.OPERACAO,
@@ -646,7 +653,6 @@ export class HomeComponent implements OnInit {
       NOME: 'nome', CPF: 'cpf', APELIDO: 'apelido', NOME_CPF: 'nome_cpf',
       OPERACAO: 'operacao', SEXO: 'sexo', PESSOA: 'pessoa', IDADE: 'idade',
       ATIVIDADE: 'atividade', ENVOLVIMENTO: 'envolvimento',
-      TIPO_SUSPEITA: 'tipo_suspeita',
       FLG_PESSOA_PUBLICA: 'flg_pessoa_publica',
       INDICADOR_PPE: 'indicador_ppe',
       ANIVERSARIO: 'aniversario',
@@ -654,13 +660,28 @@ export class HomeComponent implements OnInit {
     const dto: any = { id: entity.ID };
     const toNull = (v: any) => (typeof v === 'string' && v.trim() === '' ? null : v);
 
+    const curTipo = entity.INDICADOR_PPE ? 'PPE' : null;
+    const oldTipo = entity.__orig?.INDICADOR_PPE ? 'PPE' : null;
+    if (curTipo !== oldTipo) dto['tipo_suspeita'] = curTipo;
+
     for (const k in map) {
-      const cur = entity[k];
+      let cur = entity[k];
       const old = entity.__orig ? entity.__orig[k] : undefined;
+
+      if (k === 'CPF') cur = this.onlyDigits(cur);
+      if (k === 'CNPJ' && (entity as any).CNPJ != null) cur = this.onlyDigits((entity as any).CNPJ);
+
       if (JSON.stringify(cur) !== JSON.stringify(old)) {
-        dto[map[k]] = k === 'ANIVERSARIO' ? toNull(cur) : toNull(cur);
+        dto[map[k]] = toNull(cur);
       }
     }
+
+    if ((entity as any).CNPJ !== undefined) {
+      const cur = this.onlyDigits((entity as any).CNPJ);
+      const old = this.onlyDigits((entity.__orig as any)?.CNPJ);
+      if (cur !== old) dto['cnpj'] = cur;
+    }
+
     return dto;
   }
 
@@ -897,12 +918,13 @@ export class HomeComponent implements OnInit {
   private validatePage1() {
     const current = this.pickPage1(this.selectedNoticia || {});
     const emptyFields = Object.entries(current)
-      .filter(([_, v]) => (v === null || v === undefined || String(v).trim() === ''))
+      .filter(([k, v]) =>
+        this.requiredPage1Fields.includes(k) &&
+        (v === null || v === undefined || String(v).trim() === '')
+      )
       .map(([k]) => k);
 
-    const changed =
-      JSON.stringify(current) !== JSON.stringify(this.originalPage1Snapshot);
-
+    const changed = JSON.stringify(current) !== JSON.stringify(this.originalPage1Snapshot);
     return { emptyFields, changed };
   }
 
@@ -962,5 +984,10 @@ export class HomeComponent implements OnInit {
     return String(cur) !== String(old);
   }
 
+  private onlyDigits(v: any): string | null {
+    const s = (v ?? '').toString();
+    const digits = s.replace(/\D/g, '');
+    return digits || null;
+  }
 
 }
